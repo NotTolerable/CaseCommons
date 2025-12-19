@@ -4,7 +4,7 @@ Light-theme Flask app for law student case analysis reports and discussions.
 
 ## Setup
 1. Copy `.env.example` to `.env` and adjust secrets.
-2. Start services: `docker-compose up --build`.
+2. Start services: `docker-compose up --build` (exposes port 8080).
 3. Initialize DB migrations inside the web container:
    - `docker-compose run --rm web flask db upgrade`
 4. Seed data: `docker-compose run --rm web python seed.py`
@@ -17,3 +17,8 @@ Light-theme Flask app for law student case analysis reports and discussions.
 
 ## Tests
 Run `pytest` (requires dependencies from `requirements.txt`).
+
+## Fly.io deployment
+1. Update `fly.toml` with your Fly app name and preferred region if different.
+2. Ensure a persistent volume is attached for `/data/uploads` and a Postgres database is provisioned; set `DATABASE_URL` accordingly.
+3. Deploy with `fly deploy`. The container listens on `0.0.0.0:${PORT}` (default 8080) via gunicorn.
