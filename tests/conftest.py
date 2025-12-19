@@ -1,11 +1,23 @@
+import os
+import sys
+
 import pytest
+from werkzeug.security import generate_password_hash
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from app import create_app, db
 from app.models import User
-from werkzeug.security import generate_password_hash
 
 @pytest.fixture
 def app():
-    app = create_app({'TESTING': True, 'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:'})
+    app = create_app({
+        'TESTING': True,
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+        'WTF_CSRF_ENABLED': False,
+    })
     with app.app_context():
         db.create_all()
         admin = User(username='admin', email='a@a.com', password_hash=generate_password_hash('pass'), email_verified=True, role='admin', status='active')

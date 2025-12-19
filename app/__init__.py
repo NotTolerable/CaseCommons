@@ -27,9 +27,12 @@ MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 def create_app(test_config=None):
     app = Flask(__name__)
 
+    default_db = os.environ.get(
+        "DATABASE_URL", "postgresql+psycopg2://postgres:postgres@db:5432/casecommons"
+    )
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "devkey"),
-        SQLALCHEMY_DATABASE_URI=os.environ.get("DATABASE_URL", "sqlite:///dev.db"),
+        SQLALCHEMY_DATABASE_URI=default_db,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
