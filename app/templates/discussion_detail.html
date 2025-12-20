@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}{{ post.title }}{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <p class="text-muted small">Posted {{ post.created_at.strftime('%b %d, %Y') }}</p>
+    <h1 class="display-6 fw-bold mb-3">{{ post.title }}</h1>
+    <div class="lead">{{ post.body }}</div>
+    <section class="mt-5">
+      <h3 class="h5">Comments</h3>
+      {% for c in comments %}
+        <div class="border rounded-4 p-3 mb-3">
+          <div class="small text-muted">{{ c.created_at.strftime('%b %d, %Y %H:%M') }}</div>
+          <p class="mb-0">{{ c.body }}</p>
+        </div>
+      {% else %}
+        <p class="text-muted">No comments yet.</p>
+      {% endfor %}
+      {% if current_user.is_authenticated %}
+        {% if current_user.status == 'muted' %}
+          <div class="alert alert-warning">You are muted and cannot comment.</div>
+        {% elif not current_user.email_verified %}
+          <div class="alert alert-info">Verify your email to participate.</div>
+        {% else %}
+          <form method="post" action="{{ url_for('add_comment', parent_type='discussion', parent_id=post.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <textarea class="form-control mb-2" name="body" rows="3"></textarea>
+            <button class="btn btn-primary">Submit</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <p><a href="{{ url_for('login') }}">Login</a> to comment.</p>
+      {% endif %}
+    </section>
+  </div>
+  <div class="col-lg-4">
+    <div class="p-4 bg-light border rounded-4">
+      <h3 class="h6 text-uppercase text-muted">Engage</h3>
+      <p class="mb-0">Share thoughtful feedback to keep our forum respectful.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
