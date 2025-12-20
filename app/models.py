@@ -34,6 +34,9 @@ class ReportImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     report_id = db.Column(db.Integer, db.ForeignKey('report.id'))
     file_path = db.Column(db.String(255), nullable=False)
+    original_name = db.Column(db.String(255))
+    mime_type = db.Column(db.String(128))
+    size_bytes = db.Column(db.Integer)
     uploaded_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

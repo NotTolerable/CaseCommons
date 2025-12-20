@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from urllib.parse import urlparse
 from flask import Flask, render_template, redirect, url_for, session, flash, request, abort, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
@@ -13,7 +14,7 @@ from functools import wraps
 import bleach
 from werkzeug.utils import secure_filename
 import uuid
-from sqlalchemy import or_, inspect
+from sqlalchemy import or_, inspect, text
 
 # Extensions
 csrf = CSRFProtect()
@@ -64,6 +65,12 @@ def create_app(test_config=None):
         WTF_CSRF_TIME_LIMIT=None,
     )
 
+    if not app.config["SQLALCHEMY_DATABASE_URI"]:
+        raise RuntimeError("DATABASE_URL is required for database connectivity")
+
+    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite") and not app.config.get("TESTING"):
+        app.logger.error("SQLite is not supported for production; provide a Postgres DATABASE_URL")
+
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     if app.config["SECRET_KEY"] == "devkey":
@@ -98,6 +105,7 @@ def create_app(test_config=None):
         return db.session.get(User, int(user_id))
 
     schema_checked = False
+    migration_checked = False
 
     def check_schema_once():
         nonlocal schema_checked
@@ -118,9 +126,41 @@ def create_app(test_config=None):
             app.logger.error("Database schema missing tables: %s. Run flask db upgrade.", ", ".join(missing))
         schema_checked = True
 
+    def check_migrations_once():
+        nonlocal migration_checked
+        if migration_checked or app.config.get("TESTING"):
+            return
+        try:
+            from alembic.config import Config
+            from alembic.script import ScriptDirectory
+
+            alembic_cfg_path = Path(app.root_path).parent / "migrations" / "alembic.ini"
+            if not alembic_cfg_path.exists():
+                app.logger.warning("Alembic configuration missing at %s", alembic_cfg_path)
+                migration_checked = True
+                return
+            alembic_cfg = Config(str(alembic_cfg_path))
+            script = ScriptDirectory.from_config(alembic_cfg)
+            head_rev = script.get_current_head()
+            with db.engine.connect() as conn:
+                if not conn.dialect.has_table(conn, "alembic_version"):
+                    app.logger.error("alembic_version table is missing; run migrations before serving traffic")
+                    migration_checked = True
+                    return
+                current_rev = conn.execute(text("SELECT version_num FROM alembic_version"))
+                current_rev = current_rev.scalar()
+            if current_rev != head_rev:
+                app.logger.error("Database revision %s does not match head %s. Run flask db upgrade.", current_rev, head_rev)
+            else:
+                app.logger.info("Database migrations are up to date at revision %s", current_rev)
+        except Exception:
+            app.logger.exception("Migration state check failed")
+        migration_checked = True
+
     @app.before_request
     def _ensure_schema():
         check_schema_once()
+        check_migrations_once()
 
     # simple rate limiting by IP per endpoint
     rate_limits = {}
@@ -157,6 +197,16 @@ def create_app(test_config=None):
         allowed_tags = bleach.sanitizer.ALLOWED_TAGS + ["p", "h1", "h2", "h3", "h4", "h5", "h6", "img", "blockquote"]
         allowed_attrs = {"*": ["class", "id", "style"], "a": ["href", "title", "target"], "img": ["src", "alt"]}
         return bleach.clean(html_text, tags=allowed_tags, attributes=allowed_attrs, strip=True)
+
+    def safe_upload_destination(filename: str) -> Path:
+        """Ensure uploads remain inside the configured directory."""
+        uploads_root = Path(app.config["UPLOAD_FOLDER"]).resolve()
+        uploads_root.mkdir(parents=True, exist_ok=True)
+        candidate = (uploads_root / filename).resolve()
+        if uploads_root != candidate.parent and uploads_root not in candidate.parents:
+            app.logger.warning("Blocked upload path traversal attempt: %s", filename)
+            abort(400)
+        return uploads_root, candidate
 
     def log_moderation(action, target_type, target_id, reason=None):
         entry = ModerationLog(
@@ -331,9 +381,20 @@ def create_app(test_config=None):
             return redirect(url_for("discussion_detail", discussion_id=post.id))
         return render_template("discussion_new.html")
 
-    @app.route("/uploads/<filename>")
+    @app.route("/uploads/<path:filename>")
     def uploaded_file(filename):
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        if ".." in filename or filename.startswith(("/", "\\")):
+            abort(404)
+        # ensure filename stays exact (no implicit normalization)
+        if secure_filename(filename) != filename:
+            abort(404)
+        record = ReportImage.query.filter_by(file_path=filename).first()
+        if not record:
+            abort(404)
+        uploads_root, target = safe_upload_destination(filename)
+        if not target.exists():
+            abort(404)
+        return send_from_directory(str(uploads_root), filename)
 
     @app.route("/admin")
     @login_required
@@ -533,13 +594,20 @@ def create_app(test_config=None):
         if not file:
             app.logger.warning("Upload attempt without file from user %s", current_user.id)
             abort(400)
-        filename = secure_filename(file.filename)
-        if not filename:
+        original_name = secure_filename(file.filename or "")
+        if not original_name:
             app.logger.warning("Upload attempt with empty filename from user %s", current_user.id)
             abort(400)
-        ext = filename.rsplit('.', 1)[-1].lower()
+        if "." not in original_name:
+            app.logger.warning("Upload attempt missing extension from user %s", current_user.id)
+            abort(400)
+        ext = original_name.rsplit('.', 1)[-1].lower()
         if ext not in ALLOWED_IMAGE_EXT:
             app.logger.warning("Upload attempt with disallowed extension '%s' from user %s", ext, current_user.id)
+            abort(400)
+        mime_type = (file.mimetype or "").lower()
+        if mime_type and not mime_type.startswith("image/"):
+            app.logger.warning("Upload attempt with non-image mimetype '%s' from user %s", mime_type, current_user.id)
             abort(400)
         file.seek(0, os.SEEK_END)
         size = file.tell()
@@ -548,11 +616,22 @@ def create_app(test_config=None):
             app.logger.warning("Upload attempt exceeding max size (%s bytes) from user %s", size, current_user.id)
             abort(400)
         unique_name = f"{uuid.uuid4().hex}.{ext}"
-        upload_folder = app.config['UPLOAD_FOLDER']
-        os.makedirs(upload_folder, exist_ok=True)
-        path = os.path.join(upload_folder, unique_name)
-        file.save(path)
-        record = ReportImage(report_id=request.form.get('report_id'), file_path=unique_name, uploaded_by=current_user.id, created_at=datetime.utcnow())
+        uploads_root, target_path = safe_upload_destination(unique_name)
+        file.save(target_path)
+        report_id = request.form.get('report_id')
+        try:
+            report_id = int(report_id) if report_id else None
+        except (TypeError, ValueError):
+            report_id = None
+        record = ReportImage(
+            report_id=report_id,
+            file_path=unique_name,
+            original_name=original_name,
+            mime_type=mime_type or None,
+            size_bytes=size,
+            uploaded_by=current_user.id,
+            created_at=datetime.utcnow(),
+        )
         db.session.add(record)
         db.session.commit()
         return {"url": url_for('uploaded_file', filename=unique_name)}

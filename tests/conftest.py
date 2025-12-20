@@ -12,11 +12,19 @@ from app import create_app, db
 from app.models import User
 
 @pytest.fixture
-def app():
+def upload_dir(tmp_path):
+    path = tmp_path / "uploads"
+    path.mkdir()
+    return path
+
+
+@pytest.fixture
+def app(upload_dir):
     app = create_app({
         'TESTING': True,
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
         'WTF_CSRF_ENABLED': False,
+        'UPLOAD_FOLDER': str(upload_dir),
     })
     with app.app_context():
         db.create_all()

@@ -4,7 +4,7 @@ services:
     build: .
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/casecommons
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:${DB_PORT:-5432}/casecommons}
     ports:
       - "8080:8080"
     depends_on:
@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: casecommons
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 volumes:
