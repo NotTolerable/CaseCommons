@@ -1,9 +1,11 @@
+import logging
 import os
+from urllib.parse import urlparse
 from flask import Flask, render_template, redirect, url_for, session, flash, request, abort, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
-from flask_wtf.csrf import generate_csrf
+from flask_wtf.csrf import CSRFError, generate_csrf
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
@@ -12,7 +14,7 @@ from functools import wraps
 import bleach
 from werkzeug.utils import secure_filename
 import uuid
-from sqlalchemy import or_
+from sqlalchemy import or_, inspect
 
 # Extensions
 csrf = CSRFProtect()
@@ -27,20 +29,51 @@ MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 def create_app(test_config=None):
     app = Flask(__name__)
 
-    default_db = os.environ.get(
-        "DATABASE_URL", "postgresql+psycopg2://postgres:postgres@db:5432/casecommons"
-    )
+    app.logger.setLevel(logging.INFO)
+
+    def _normalized_database_uri():
+        url = os.environ.get("DATABASE_URL")
+        if url and url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url or "postgresql://postgres:postgres@localhost:5432/casecommons"
+
+    def _mask_db_uri(uri: str) -> str:
+        if not uri:
+            return ""
+        try:
+            parsed = urlparse(uri)
+            netloc = parsed.hostname or ""
+            if parsed.port:
+                netloc = f"{netloc}:{parsed.port}"
+            userinfo = parsed.username or ""
+            if userinfo:
+                userinfo = f"{userinfo}@"
+            return f"{parsed.scheme}://{userinfo}{netloc}{parsed.path}"
+        except Exception:
+            return "***"
+
+    default_db = _normalized_database_uri()
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "devkey"),
         SQLALCHEMY_DATABASE_URI=default_db,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        UPLOAD_FOLDER=os.environ.get("UPLOAD_FOLDER", os.path.join(os.getcwd(), "static", "uploads")),
+        UPLOAD_FOLDER=os.environ.get("UPLOAD_FOLDER", "/data/uploads"),
         SECURITY_PASSWORD_SALT=os.environ.get("SECURITY_PASSWORD_SALT", "salty"),
         REMEMBER_COOKIE_HTTPONLY=True,
         WTF_CSRF_TIME_LIMIT=None,
     )
+
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+    if app.config["SECRET_KEY"] == "devkey":
+        app.logger.warning("SECRET_KEY is using the default value; set a strong secret in the environment")
+    if app.config["SECURITY_PASSWORD_SALT"] == "salty":
+        app.logger.warning("SECURITY_PASSWORD_SALT is using the default value; set a unique salt in the environment")
+
+    app.logger.info("Database URI in use: %s", _mask_db_uri(app.config["SQLALCHEMY_DATABASE_URI"]))
+    app.logger.info("Uploads directory: %s", app.config["UPLOAD_FOLDER"])
 
     if test_config:
         app.config.update(test_config)
@@ -52,11 +85,42 @@ def create_app(test_config=None):
     login_manager.login_view = "login"
     app.jinja_env.globals['csrf_token'] = generate_csrf
 
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        app.logger.warning("CSRF validation failed on %s from %s: %s", request.path, request.remote_addr, e.description)
+        flash("Form expired or invalid. Please try again.", "danger")
+        return redirect(request.referrer or url_for("index")), 400
+
     from .models import User, Report, Discussion, Comment, EmailToken, ModerationLog, ReportImage
 
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
+
+    schema_checked = False
+
+    def check_schema_once():
+        nonlocal schema_checked
+        if schema_checked:
+            return
+        inspector = inspect(db.engine)
+        required_tables = [
+            "user",
+            "report",
+            "discussion",
+            "comment",
+            "report_image",
+            "email_token",
+            "moderation_log",
+        ]
+        missing = [t for t in required_tables if not inspector.has_table(t)]
+        if missing:
+            app.logger.error("Database schema missing tables: %s. Run flask db upgrade.", ", ".join(missing))
+        schema_checked = True
+
+    @app.before_request
+    def _ensure_schema():
+        check_schema_once()
 
     # simple rate limiting by IP per endpoint
     rate_limits = {}
@@ -369,17 +433,21 @@ def create_app(test_config=None):
     def admin_upload():
         file = request.files.get('file')
         if not file:
+            app.logger.warning("Upload attempt without file from user %s", current_user.id)
             abort(400)
         filename = secure_filename(file.filename)
         if not filename:
+            app.logger.warning("Upload attempt with empty filename from user %s", current_user.id)
             abort(400)
         ext = filename.rsplit('.', 1)[-1].lower()
         if ext not in ALLOWED_IMAGE_EXT:
+            app.logger.warning("Upload attempt with disallowed extension '%s' from user %s", ext, current_user.id)
             abort(400)
         file.seek(0, os.SEEK_END)
         size = file.tell()
         file.seek(0)
         if size > MAX_UPLOAD_SIZE:
+            app.logger.warning("Upload attempt exceeding max size (%s bytes) from user %s", size, current_user.id)
             abort(400)
         unique_name = f"{uuid.uuid4().hex}.{ext}"
         upload_folder = app.config['UPLOAD_FOLDER']

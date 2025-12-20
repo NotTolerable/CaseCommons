@@ -29,6 +29,15 @@
 </div>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    const editorEl = document.querySelector('#editor');
+    if (!editorEl) {
+      console.error('Missing editor container');
+      return;
+    }
+    if (typeof Quill === 'undefined') {
+      console.error('Quill failed to load; ensure CDN availability.');
+      return;
+    }
     const quill = new Quill('#editor', {theme: 'snow', modules: {toolbar: [['bold','italic'], [{'header':[1,2,false]}], [{'list':'ordered'},{'list':'bullet'}], ['blockquote','link','image']]}});
     const form = document.querySelector('form');
     form.addEventListener('submit', () => {

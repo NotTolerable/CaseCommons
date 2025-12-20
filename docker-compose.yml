@@ -3,6 +3,8 @@ services:
   web:
     build: .
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/casecommons
     ports:
       - "8080:8080"
     depends_on:

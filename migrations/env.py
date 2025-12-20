@@ -11,8 +11,17 @@ logger = logging.getLogger('alembic.env')
 
 target_metadata = current_app.extensions['migrate'].db.metadata
 
+
+def _get_database_url():
+    url = current_app.config.get("SQLALCHEMY_DATABASE_URI")
+    if url and url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url
+
 def run_migrations_offline():
-    url = config.get_main_option("sqlalchemy.url")
+    url = _get_database_url() or config.get_main_option("sqlalchemy.url")
+    if url:
+        config.set_main_option("sqlalchemy.url", url)
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
 
     with context.begin_transaction():
