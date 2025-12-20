@@ -7,7 +7,6 @@ from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError, generate_csrf
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from datetime import datetime, timedelta
 from functools import wraps
@@ -92,6 +91,7 @@ def create_app(test_config=None):
         return redirect(request.referrer or url_for("index")), 400
 
     from .models import User, Report, Discussion, Comment, EmailToken, ModerationLog, ReportImage
+    from .security import hash_password, verify_password
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -157,6 +157,18 @@ def create_app(test_config=None):
         allowed_tags = bleach.sanitizer.ALLOWED_TAGS + ["p", "h1", "h2", "h3", "h4", "h5", "h6", "img", "blockquote"]
         allowed_attrs = {"*": ["class", "id", "style"], "a": ["href", "title", "target"], "img": ["src", "alt"]}
         return bleach.clean(html_text, tags=allowed_tags, attributes=allowed_attrs, strip=True)
+
+    def log_moderation(action, target_type, target_id, reason=None):
+        entry = ModerationLog(
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            actor_id=current_user.id if current_user.is_authenticated else None,
+            reason=reason,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(entry)
+        db.session.commit()
 
     def send_verification_email(user):
         serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
@@ -224,7 +236,7 @@ def create_app(test_config=None):
             if User.query.filter((User.username == username) | (User.email == email)).first():
                 flash("User already exists", "warning")
                 return redirect(url_for("register"))
-            user = User(username=username, email=email, password_hash=generate_password_hash(password), email_verified=False, role="user", status="active", created_at=datetime.utcnow())
+            user = User(username=username, email=email, password_hash=hash_password(password), email_verified=False, role="user", status="active", created_at=datetime.utcnow())
             db.session.add(user)
             db.session.commit()
             send_verification_email(user)
@@ -254,7 +266,7 @@ def create_app(test_config=None):
             username = request.form.get("username")
             password = request.form.get("password")
             user = User.query.filter_by(username=username).first()
-            if not user or not check_password_hash(user.password_hash, password):
+            if not user or not verify_password(password, user.password_hash):
                 flash("Invalid credentials", "danger")
                 return redirect(url_for("login"))
             if user.status == "banned":
@@ -332,6 +344,39 @@ def create_app(test_config=None):
         discussions = Discussion.query.order_by(Discussion.created_at.desc()).all()
         return render_template("admin/index.html", reports=reports, users=users, discussions=discussions)
 
+    @app.route("/admin/users/new", methods=["GET", "POST"])
+    @login_required
+    @admin_required
+    def admin_user_new():
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            email = request.form.get("email", "").strip().lower()
+            password = request.form.get("password")
+            role = request.form.get("role", "user")
+            status = request.form.get("status", "active")
+            verified = bool(request.form.get("email_verified"))
+            if not username or not email or not password:
+                flash("Username, email, and password are required", "warning")
+                return redirect(url_for("admin_user_new"))
+            if User.query.filter((User.username == username) | (User.email == email)).first():
+                flash("User already exists", "danger")
+                return redirect(url_for("admin_user_new"))
+            user = User(
+                username=username,
+                email=email,
+                password_hash=hash_password(password),
+                role=role,
+                status=status,
+                email_verified=verified,
+                created_at=datetime.utcnow(),
+            )
+            db.session.add(user)
+            db.session.commit()
+            log_moderation("create_user", "user", user.id, reason="admin created user")
+            flash("User created", "success")
+            return redirect(url_for("admin_index"))
+        return render_template("admin/user_form.html")
+
     @app.route("/admin/reports/new", methods=["GET", "POST"])
     @login_required
     @admin_required
@@ -347,6 +392,7 @@ def create_app(test_config=None):
             report = Report(title=title, slug=slug, body_html=body, created_by=current_user.id, updated_by=current_user.id, created_at=datetime.utcnow(), updated_at=datetime.utcnow(), published=published)
             db.session.add(report)
             db.session.commit()
+            log_moderation("create_report", "report", report.id, request.form.get("reason"))
             flash("Report created", "success")
             return redirect(url_for("admin_index"))
         return render_template("admin/report_form.html", report=None)
@@ -369,6 +415,7 @@ def create_app(test_config=None):
             report.updated_at = datetime.utcnow()
             report.updated_by = current_user.id
             db.session.commit()
+            log_moderation("update_report", "report", report.id, request.form.get("reason"))
             flash("Report updated", "success")
             return redirect(url_for("admin_index"))
         return render_template("admin/report_form.html", report=report)
@@ -380,8 +427,47 @@ def create_app(test_config=None):
         report = Report.query.get_or_404(report_id)
         db.session.delete(report)
         db.session.commit()
+        log_moderation("delete_report", "report", report_id, request.form.get("reason"))
         flash("Report deleted", "info")
         return redirect(url_for("admin_index"))
+
+    @app.route("/admin/discussions/new", methods=["GET", "POST"])
+    @login_required
+    @admin_required
+    def admin_discussion_new():
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            body = request.form.get("body", "").strip()
+            if not title or not body:
+                flash("Title and body are required", "warning")
+                return redirect(url_for("admin_discussion_new"))
+            post = Discussion(title=title, body=body, created_by=current_user.id, created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            db.session.add(post)
+            db.session.commit()
+            log_moderation("create_discussion", "discussion", post.id, request.form.get("reason"))
+            flash("Discussion created", "success")
+            return redirect(url_for("admin_index"))
+        return render_template("admin/discussion_form.html", discussion=None)
+
+    @app.route("/admin/discussions/<int:discussion_id>/edit", methods=["GET", "POST"])
+    @login_required
+    @admin_required
+    def admin_discussion_edit(discussion_id):
+        discussion = Discussion.query.get_or_404(discussion_id)
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            body = request.form.get("body", "").strip()
+            if not title or not body:
+                flash("Title and body are required", "warning")
+                return redirect(url_for("admin_discussion_edit", discussion_id=discussion.id))
+            discussion.title = title
+            discussion.body = body
+            discussion.updated_at = datetime.utcnow()
+            db.session.commit()
+            log_moderation("update_discussion", "discussion", discussion.id, request.form.get("reason"))
+            flash("Discussion updated", "success")
+            return redirect(url_for("admin_index"))
+        return render_template("admin/discussion_form.html", discussion=discussion)
 
     @app.route("/admin/users/<int:user_id>/toggle", methods=["POST"])
     @login_required
@@ -402,9 +488,19 @@ def create_app(test_config=None):
         elif action == "demote":
             user.role = "user"
         db.session.commit()
-        db.session.add(ModerationLog(action=action, target_type="user", target_id=user.id, actor_id=current_user.id, created_at=datetime.utcnow(), reason=request.form.get("reason")))
-        db.session.commit()
+        log_moderation(action, "user", user.id, request.form.get("reason"))
         flash("User updated", "success")
+        return redirect(url_for("admin_index"))
+
+    @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+    @login_required
+    @admin_required
+    def admin_user_delete(user_id):
+        user = User.query.get_or_404(user_id)
+        db.session.delete(user)
+        db.session.commit()
+        log_moderation("delete_user", "user", user_id, request.form.get("reason"))
+        flash("User deleted", "info")
         return redirect(url_for("admin_index"))
 
     @app.route("/admin/discussions/<int:discussion_id>/delete", methods=["POST"])
@@ -414,6 +510,7 @@ def create_app(test_config=None):
         post = Discussion.query.get_or_404(discussion_id)
         db.session.delete(post)
         db.session.commit()
+        log_moderation("delete_discussion", "discussion", discussion_id, request.form.get("reason"))
         flash("Discussion removed", "info")
         return redirect(url_for("admin_index"))
 
@@ -424,6 +521,7 @@ def create_app(test_config=None):
         comment = Comment.query.get_or_404(comment_id)
         db.session.delete(comment)
         db.session.commit()
+        log_moderation("delete_comment", "comment", comment_id, request.form.get("reason"))
         flash("Comment removed", "info")
         return redirect(url_for("admin_index"))
 

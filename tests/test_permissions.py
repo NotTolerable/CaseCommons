@@ -1,4 +1,5 @@
-from app.models import Discussion, Comment
+from app.models import Discussion, Comment, ModerationLog, User
+from app.security import hash_password
 from app import db
 
 
@@ -29,3 +30,26 @@ def test_muted_cannot_post_comment(app, client):
 def test_banned_cannot_login(client):
     resp = login(client, 'banned')
     assert b'banned' in resp.data
+
+
+def test_unverified_cannot_post_discussion(app, client):
+    with app.app_context():
+        pending = User(username='pending', email='p@p.com', password_hash=hash_password('pass'), email_verified=False, role='user', status='active')
+        db.session.add(pending)
+        db.session.commit()
+    login(client, 'pending')
+    resp = client.post('/discussions/new', data={'title': 't', 'body': 'b'}, follow_redirects=True)
+    assert b'Verify your email' in resp.data
+
+
+def test_moderation_log_created_on_action(app, client):
+    with app.app_context():
+        target = User(username='target', email='t@t.com', password_hash=hash_password('pass'), email_verified=True, role='user', status='active')
+        db.session.add(target)
+        db.session.commit()
+        target_id = target.id
+    login(client, 'admin')
+    client.post(f'/admin/users/{target_id}/toggle', data={'action': 'ban'}, follow_redirects=True)
+    with app.app_context():
+        entry = ModerationLog.query.filter_by(target_id=target_id, action='ban').first()
+        assert entry is not None

@@ -23,7 +23,7 @@
           <div class="alert alert-info">Verify your email to participate.</div>
         {% else %}
           <form method="post" action="{{ url_for('add_comment', parent_type='report', parent_id=report.id) }}">
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <textarea class="form-control mb-2" name="body" rows="3" placeholder="Share your perspective"></textarea>
             <button class="btn btn-primary">Submit</button>
           </form>

@@ -17,7 +17,7 @@
               <div class="btn-group btn-group-sm">
                 <a class="btn btn-outline-secondary" href="{{ url_for('admin_report_edit', report_id=r.id) }}">Edit</a>
                 <form method="post" action="{{ url_for('admin_report_delete', report_id=r.id) }}" onsubmit="return confirm('Delete?');">
-                  {{ csrf_token() }}
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button class="btn btn-outline-danger">Delete</button>
                 </form>
               </div>
@@ -31,8 +31,11 @@
   </div>
   <div class="col-lg-6">
     <div class="card shadow-sm border-0 rounded-4 mb-4">
-      <div class="card-body">
-        <h2 class="h6">Users</h2>
+        <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 mb-0">Users</h2>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('admin_user_new') }}">New</a>
+        </div>
         <div class="list-group">
           {% for u in users %}
             <div class="list-group-item">
@@ -42,7 +45,7 @@
                   <div class="small text-muted">{{ u.email }} • {{ u.status }} • {{ u.role }}</div>
                 </div>
                 <form method="post" action="{{ url_for('admin_user_toggle', user_id=u.id) }}" class="d-flex gap-2">
-                  {{ csrf_token() }}
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <select class="form-select form-select-sm" name="action">
                     <option value="mute">Mute</option>
                     <option value="unmute">Unmute</option>
@@ -53,6 +56,10 @@
                   </select>
                   <button class="btn btn-sm btn-outline-primary">Apply</button>
                 </form>
+                <form method="post" action="{{ url_for('admin_user_delete', user_id=u.id) }}" onsubmit="return confirm('Delete user?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
               </div>
             </div>
           {% endfor %}
@@ -61,14 +68,20 @@
     </div>
     <div class="card shadow-sm border-0 rounded-4">
       <div class="card-body">
-        <h2 class="h6">Discussions</h2>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 mb-0">Discussions</h2>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('admin_discussion_new') }}">New</a>
+        </div>
         {% for d in discussions %}
           <div class="d-flex justify-content-between align-items-center border-bottom py-2">
             <span>{{ d.title }}</span>
-            <form method="post" action="{{ url_for('admin_discussion_delete', discussion_id=d.id) }}" onsubmit="return confirm('Delete?');">
-              {{ csrf_token() }}
-              <button class="btn btn-outline-danger btn-sm">Delete</button>
-            </form>
+            <div class="btn-group btn-group-sm">
+              <a class="btn btn-outline-secondary" href="{{ url_for('admin_discussion_edit', discussion_id=d.id) }}">Edit</a>
+              <form method="post" action="{{ url_for('admin_discussion_delete', discussion_id=d.id) }}" onsubmit="return confirm('Delete?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-outline-danger btn-sm">Delete</button>
+              </form>
+            </div>
           </div>
         {% else %}
           <p class="text-muted">No discussions</p>

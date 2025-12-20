@@ -7,7 +7,7 @@
       <div class="card-body">
         <h1 class="h4 mb-3">{{ 'Edit' if report else 'New' }} report</h1>
         <form method="post">
-          {{ csrf_token() }}
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3">
             <label class="form-label">Title</label>
             <input class="form-control" name="title" value="{{ report.title if report else '' }}" required>

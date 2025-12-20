@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from app import create_app, db
 from app.models import User, Report, Discussion, Comment
-from werkzeug.security import generate_password_hash
+from app.security import hash_password
 
 app = create_app()
 app.app_context().push()
@@ -10,10 +10,10 @@ app.app_context().push()
 def seed():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
-        admin = User(username='admin', email='admin@example.com', password_hash=generate_password_hash('password'), email_verified=True, role='admin', status='active')
-        muted = User(username='muted', email='muted@example.com', password_hash=generate_password_hash('password'), email_verified=True, role='user', status='muted')
-        banned = User(username='banned', email='banned@example.com', password_hash=generate_password_hash('password'), email_verified=True, role='user', status='banned')
-        user = User(username='user', email='user@example.com', password_hash=generate_password_hash('password'), email_verified=True, role='user', status='active')
+        admin = User(username='admin', email='admin@example.com', password_hash=hash_password('password'), email_verified=True, role='admin', status='active')
+        muted = User(username='muted', email='muted@example.com', password_hash=hash_password('password'), email_verified=True, role='user', status='muted')
+        banned = User(username='banned', email='banned@example.com', password_hash=hash_password('password'), email_verified=True, role='user', status='banned')
+        user = User(username='user', email='user@example.com', password_hash=hash_password('password'), email_verified=True, role='user', status='active')
         db.session.add_all([admin, muted, banned, user])
         db.session.commit()
     admin = User.query.filter_by(username='admin').first()
