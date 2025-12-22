@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Admin Panel</h1>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 rounded-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 mb-0">Reports</h2>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('admin_report_new') }}">New</a>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for r in reports %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span>{{ r.title }}</span>
+              <div class="btn-group btn-group-sm">
+                <a class="btn btn-outline-secondary" href="{{ url_for('admin_report_edit', report_id=r.id) }}">Edit</a>
+                <form method="post" action="{{ url_for('admin_report_delete', report_id=r.id) }}" onsubmit="return confirm('Delete?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-outline-danger">Delete</button>
+                </form>
+              </div>
+            </li>
+          {% else %}
+            <li class="list-group-item">No reports</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 mb-0">Users</h2>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('admin_user_new') }}">New</a>
+        </div>
+        <div class="list-group">
+          {% for u in users %}
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>{{ u.username }}</strong>
+                  <div class="small text-muted">{{ u.email }} • {{ u.status }} • {{ u.role }}</div>
+                </div>
+                <form method="post" action="{{ url_for('admin_user_toggle', user_id=u.id) }}" class="d-flex gap-2">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <select class="form-select form-select-sm" name="action">
+                    <option value="mute">Mute</option>
+                    <option value="unmute">Unmute</option>
+                    <option value="ban">Ban</option>
+                    <option value="unban">Unban</option>
+                    <option value="promote">Promote</option>
+                    <option value="demote">Demote</option>
+                  </select>
+                  <button class="btn btn-sm btn-outline-primary">Apply</button>
+                </form>
+                <form method="post" action="{{ url_for('admin_user_delete', user_id=u.id) }}" onsubmit="return confirm('Delete user?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm border-0 rounded-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 mb-0">Discussions</h2>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('admin_discussion_new') }}">New</a>
+        </div>
+        {% for d in discussions %}
+          <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <span>{{ d.title }}</span>
+            <div class="btn-group btn-group-sm">
+              <a class="btn btn-outline-secondary" href="{{ url_for('admin_discussion_edit', discussion_id=d.id) }}">Edit</a>
+              <form method="post" action="{{ url_for('admin_discussion_delete', discussion_id=d.id) }}" onsubmit="return confirm('Delete?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-outline-danger btn-sm">Delete</button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <p class="text-muted">No discussions</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
