@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlparse, urljoin
 from flask import Flask, render_template, redirect, url_for, session, flash, request, abort, send_from_directory
 import requests
+import resend
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
@@ -278,7 +279,7 @@ def create_app(test_config=None):
         resend_from = app.config.get("RESEND_FROM") or app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
         mail_server = app.config.get("MAIL_SERVER")
         dev_mailer = app.config.get("MAIL_DEV_LOG_ONLY") or not (resend_key or mail_server)
-        sender = resend_from
+        sender = resend_from or "onboarding@resend.dev"
 
         if dev_mailer:
             app.logger.info("DEV MAILER: Verification link for %s -> %s", user.email, verify_url)
@@ -286,24 +287,18 @@ def create_app(test_config=None):
 
         if resend_key:
             try:
-                resp = requests.post(
-                    "https://api.resend.com/emails",
-                    headers={
-                        "Authorization": f"Bearer {resend_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "from": sender or "no-reply@casecommons.local",
-                        "to": [user.email],
-                        "subject": "Verify your Case Commons account",
-                        "html": f"<p>Hi {user.username},</p><p>Please verify your account by visiting:<br><a href=\"{verify_url}\">{verify_url}</a></p><p>If you did not sign up, ignore this email.</p>",
-                    },
-                    timeout=10,
-                )
-                if resp.ok:
-                    app.logger.info("Sent verification email via Resend to %s", user.email)
+                resend.api_key = resend_key
+                email_payload = {
+                    "from": sender,
+                    "to": user.email,
+                    "subject": "Verify your Case Commons account",
+                    "html": f"<p>Hi {user.username},</p><p>Please verify your account by visiting:<br><a href=\"{verify_url}\">{verify_url}</a></p><p>If you did not sign up, ignore this email.</p>",
+                }
+                resp = resend.Emails.send(email_payload)
+                if getattr(resp, "id", None):
+                    app.logger.info("Sent verification email via Resend to %s (id=%s)", user.email, resp.id)
                     return True
-                app.logger.error("Resend API error for %s: status=%s body=%s", user.email, resp.status_code, resp.text)
+                app.logger.error("Resend API error for %s: %s", user.email, resp)
                 return False
             except Exception as exc:
                 app.logger.error("Resend call failed for %s: %s", user.email, exc)
