@@ -11,7 +11,7 @@ Light-theme Flask app for law student case analysis reports and discussions.
 5. Seed data for quick testing: `docker compose run --rm web python seed.py`.
 
 ## Accounts
-- Admin: `admin@example.com` / `password`
+- Admin: `admin@example.com` / `password` (use this for `/admin`)
 - User: `user@example.com` / `password`
 - Muted: `muted@example.com` / `password`
 - Banned: `banned@example.com` / `password`
@@ -66,22 +66,22 @@ SQLite-only deployment is fully supported and is the default Fly.io path below. 
 
 ## Local setup: email verification
 - Required env vars when sending real email (set in `.env` or Fly secrets):
-  - `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`
-  - TLS/SSL toggles: `MAIL_USE_TLS` (default true), `MAIL_USE_SSL` (default false)
+  - **Resend (recommended):** `RESEND_API_KEY` (e.g., `re_xxx`), `RESEND_FROM` (verified sender, e.g., `Case Commons <hello@yourdomain.com>`). No SMTP host/port needed.
+  - **SMTP (alternative):** `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`, `MAIL_USE_TLS`/`MAIL_USE_SSL`.
   - `APP_BASE_URL` (e.g., `https://<your-app>.fly.dev`) so verification links are correct when no request context is available.
 - Development defaults:
   - `MAIL_DEV_LOG_ONLY=true` logs verification links to the server console and still counts as a successful send for local testing.
-  - No SMTP server is needed in this mode.
+  - No SMTP/Resend key is needed in this mode.
 - Optional local inbox (Mailpit):
   - Start: `docker compose --profile mail up mailpit` (UI at http://localhost:8025, SMTP at :1025).
   - Configure env: `MAIL_SERVER=mailpit`, `MAIL_PORT=1025`, `MAIL_USE_TLS=false`, `MAIL_DEV_LOG_ONLY=false`, `MAIL_DEFAULT_SENDER=dev@localhost`.
-- Fly deployment with SMTP:
-  - Set the mail secrets above via `fly secrets set ...`.
-  - Use a provider/sandbox that allows your sender address; complete any domain verification required by your provider.
+- Fly deployment with Resend:
+  - Set `RESEND_API_KEY` and `RESEND_FROM` via `fly secrets set ...`.
+  - Ensure the sender is authorized/verified in Resend.
   - Set `APP_BASE_URL=https://<your-app>.fly.dev` so verification links work in release commands.
 - Troubleshooting missing emails:
-  - Check Fly logs for `Verification email failed` messages.
-  - Confirm the sender address is authorized by your provider and the credentials are correct.
-  - Ensure `MAIL_DEV_LOG_ONLY` is `false` when you expect real delivery and that outbound SMTP is allowed in your environment.
+  - Check Fly logs for `Resend API error` or `Verification email failed` messages.
+  - Confirm the sender address is authorized and the Resend key is valid.
+  - Ensure `MAIL_DEV_LOG_ONLY` is `false` when you expect real delivery and that outbound HTTPS is allowed in your environment.
 
 This application is fully functional on SQLite when deployed with a Fly volume; Postgres is optional, not required for core features.

@@ -10,3 +10,4 @@ Werkzeug==2.3.7
 pytest==7.4.2
 pytest-flask==1.2.0
  gunicorn==21.2.0
+requests==2.31.0

@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 from flask import Flask, render_template, redirect, url_for, session, flash, request, abort, send_from_directory
+import requests
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
@@ -16,7 +17,7 @@ from functools import wraps
 import bleach
 from werkzeug.utils import secure_filename
 import uuid
-from sqlalchemy import or_, inspect, text
+from sqlalchemy import or_, inspect, text, func
 
 # Extensions
 csrf = CSRFProtect()
@@ -88,6 +89,8 @@ def create_app(test_config=None):
         MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER"),
         MAIL_DEV_LOG_ONLY=env_flag("MAIL_DEV_LOG_ONLY", False),
         APP_BASE_URL=os.getenv("APP_BASE_URL"),
+        RESEND_API_KEY=os.getenv("RESEND_API_KEY"),
+        RESEND_FROM=os.getenv("RESEND_FROM"),
     )
 
     if not app.config["SQLALCHEMY_DATABASE_URI"]:
@@ -271,16 +274,43 @@ def create_app(test_config=None):
         db.session.add(email_token)
         db.session.commit()
 
+        resend_key = app.config.get("RESEND_API_KEY")
+        resend_from = app.config.get("RESEND_FROM") or app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
         mail_server = app.config.get("MAIL_SERVER")
-        dev_mailer = app.config.get("MAIL_DEV_LOG_ONLY") or not mail_server
-        sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
+        dev_mailer = app.config.get("MAIL_DEV_LOG_ONLY") or not (resend_key or mail_server)
+        sender = resend_from
 
         if dev_mailer:
             app.logger.info("DEV MAILER: Verification link for %s -> %s", user.email, verify_url)
             return True
 
-        if not sender:
-            app.logger.error("MAIL_DEFAULT_SENDER is not configured; cannot send verification email to %s", user.email)
+        if resend_key:
+            try:
+                resp = requests.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {resend_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "from": sender or "no-reply@casecommons.local",
+                        "to": [user.email],
+                        "subject": "Verify your Case Commons account",
+                        "html": f"<p>Hi {user.username},</p><p>Please verify your account by visiting:<br><a href=\"{verify_url}\">{verify_url}</a></p><p>If you did not sign up, ignore this email.</p>",
+                    },
+                    timeout=10,
+                )
+                if resp.ok:
+                    app.logger.info("Sent verification email via Resend to %s", user.email)
+                    return True
+                app.logger.error("Resend API error for %s: status=%s body=%s", user.email, resp.status_code, resp.text)
+                return False
+            except Exception as exc:
+                app.logger.error("Resend call failed for %s: %s", user.email, exc)
+                return False
+
+        if not sender or not mail_server:
+            app.logger.error("Mail settings incomplete; cannot send verification email to %s", user.email)
             return False
 
         msg = EmailMessage()
@@ -305,7 +335,7 @@ def create_app(test_config=None):
                     if app.config.get("MAIL_USERNAME"):
                         smtp.login(app.config["MAIL_USERNAME"], app.config.get("MAIL_PASSWORD"))
                     smtp.send_message(msg)
-            app.logger.info("Sent verification email to %s", user.email)
+            app.logger.info("Sent verification email via SMTP to %s", user.email)
             return True
         except Exception as exc:
             app.logger.error("Verification email failed for %s: %s", user.email, exc)
@@ -363,7 +393,7 @@ def create_app(test_config=None):
             if not username or not email or not password:
                 flash("All fields are required", "danger")
                 return redirect(url_for("register"))
-            if User.query.filter((User.username == username) | (User.email == email)).first():
+            if User.query.filter((User.username == username) | (func.lower(User.email) == email)).first():
                 flash("User already exists", "warning")
                 return redirect(url_for("register"))
             user = User(username=username, email=email, password_hash=hash_password(password), email_verified=False, role="user", status="active", created_at=datetime.utcnow())
