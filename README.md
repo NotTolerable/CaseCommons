@@ -21,7 +21,7 @@ Light-theme Flask app for law student case analysis reports and discussions.
 - Include the dockerized persistence check (requires Docker): `RUN_DOCKER_INTEGRATION=1 pytest -m integration`
 
 ## Fly.io deployment (manual steps)
-This setup uses SQLite on a Fly volume to avoid paid Postgres. If you prefer Postgres later, set a Postgres `DATABASE_URL` secret and skip the SQLite steps.
+SQLite-only deployment is fully supported and is the default Fly.io path below. The app stores the SQLite database and uploads on the mounted Fly volume at `/data` so data survives restarts and deploys. If you prefer Postgres later, set a Postgres `DATABASE_URL` secret and skip the SQLite-specific steps.
 
 1. **Authenticate and set the app name/region**
    - `fly auth login`
@@ -34,25 +34,31 @@ This setup uses SQLite on a Fly volume to avoid paid Postgres. If you prefer Pos
 3. **Set required secrets** (at minimum)
    - `fly secrets set SECRET_KEY=<random-long-string> SECURITY_PASSWORD_SALT=<random-long-string>`
    - Optional: mail provider secrets as needed.
-   - If you later want Postgres instead of SQLite, also set `fly secrets set DATABASE_URL=<postgresql://...>` (the app will normalize legacy `postgres://`).
+   - SQLite default: no `DATABASE_URL` secret is needed; the app will default to `sqlite:////data/app.db` on the mounted volume.
+   - Postgres option (paid): set `fly secrets set DATABASE_URL=<postgresql://...>` (the app will normalize legacy `postgres://`).
 
-4. **Deploy**
+4. **Deploy (SQLite path)**
    - `fly deploy` (release command runs `flask db upgrade` before starting machines). The default `fly.toml` exports `DATABASE_URL=sqlite:////data/app.db` to match the mounted volume.
    - The app listens on `0.0.0.0:$PORT` (Fly injects `PORT`, defaults to 8080).
 
-5. **Verify environment and health**
-   - `fly ssh console -C "printenv DATABASE_URL"` (should show `sqlite:////data/app.db` unless overridden)
-   - `fly logs` to confirm migration head/state and upload path
-   - `fly status` and `fly open` for health checks
+5. **Verify SQLite persistence**
+   - `fly ssh console -C "ls -l /data && sqlite3 /data/app.db '.tables'"` to confirm the DB file and schema exist on the volume.
+   - `fly ssh console -C "ls -l /data/uploads"` to confirm uploads are stored on the volume.
+   - `fly logs` to confirm migration head/state and upload path.
+   - `fly status` and `fly open` for health checks.
 
 6. **Post-deploy sanity checks**
-   - Visit the site, sign up a test user, and confirm email verification gating
-   - Upload an image in the admin report editor and verify it persists in `/data/uploads`
-   - Create a discussion/comment to confirm muted/banned rules behave as expected
+   - Visit the site, sign up a test user, and confirm email verification gating.
+   - Upload an image in the admin report editor and verify it persists in `/data/uploads`.
+   - Create a discussion/comment to confirm muted/banned rules behave as expected.
 
-> Note: If you need automated backups or multi-region HA while staying on SQLite, you’ll need an external backup cadence for `/data` (not included here); otherwise switch to managed Postgres on Fly and point `DATABASE_URL` to it.
+> Notes:
+> - SQLite on Fly works for single-region deployments using the mounted volume; if you need automated backups or multi-region HA, add your own backup cadence for `/data` or switch to managed Postgres and point `DATABASE_URL` to it.
+> - The app runs fully on SQLite when `DATABASE_URL` is unset. If you later enable Postgres, rerun `flask db upgrade` to migrate the new database before traffic.
 
 ## Troubleshooting
 - Missing tables / OperationalError: check logs for "Database schema missing tables" and run `flask db upgrade` inside the container or via Fly release command.
 - CSRF failures redirect back with a warning and log the failing path/IP; refresh the page and resubmit.
 - Quill not loading: browser console will show "Quill failed to load"—ensure CDN access or bundle the asset locally.
+
+This application is fully functional on SQLite when deployed with a Fly volume; Postgres is optional, not required for core features.
