@@ -71,6 +71,7 @@ def test_docker_compose_restart_retains_data():
         "COMPOSE_PROJECT_NAME": project_name,
         "DB_PORT": str(db_port),
         "DATABASE_URL": db_url,
+        "COMPOSE_PROFILES": "postgres",
     })
 
     subprocess.run(["docker", "compose", "-f", "docker-compose.yml", "up", "-d", "db"], cwd=project_root, env=env, check=True)

@@ -35,7 +35,15 @@ def create_app(test_config=None):
         url = os.environ.get("DATABASE_URL")
         if url and url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
-        return url or "postgresql://postgres:postgres@localhost:5432/casecommons"
+        if url:
+            return url
+
+        sqlite_path = Path(
+            os.environ.get("SQLITE_PATH", os.environ.get("APP_DB_PATH", "/data/app.db"))
+        )
+        if not sqlite_path.is_absolute():
+            sqlite_path = (Path(app.root_path).parent / sqlite_path).resolve()
+        return f"sqlite:///{sqlite_path}"
 
     def _mask_db_uri(uri: str) -> str:
         if not uri:
@@ -68,8 +76,12 @@ def create_app(test_config=None):
     if not app.config["SQLALCHEMY_DATABASE_URI"]:
         raise RuntimeError("DATABASE_URL is required for database connectivity")
 
-    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite") and not app.config.get("TESTING"):
-        app.logger.error("SQLite is not supported for production; provide a Postgres DATABASE_URL")
+    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
+        db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "", 1)
+        if db_path and db_path != ":memory:":
+            db_file = Path(db_path)
+            db_file.parent.mkdir(parents=True, exist_ok=True)
+            app.logger.info("SQLite database path resolved to %s", db_file)
 
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 

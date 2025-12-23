@@ -4,14 +4,12 @@ services:
     build: .
     env_file: .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:${DB_PORT:-5432}/casecommons}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/app.db}
     ports:
       - "8080:8080"
-    depends_on:
-      - db
     volumes:
       - .:/app
-      - uploads:/data/uploads
+      - data:/data
   db:
     image: postgres:15
     environment:
@@ -22,6 +20,7 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    profiles: ["postgres"]
 volumes:
   pgdata:
-  uploads:
+  data:

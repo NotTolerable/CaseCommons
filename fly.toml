@@ -3,6 +3,7 @@ primary_region = "iad"
 
 [env]
   PORT = "8080"
+  DATABASE_URL = "sqlite:////data/app.db"
 
 [http_service]
   internal_port = 8080
@@ -22,5 +23,5 @@ primary_region = "iad"
   path = "/"
 
 [[mounts]]
-  source = "uploads"
-  destination = "/data/uploads"
+  source = "data"
+  destination = "/data"
