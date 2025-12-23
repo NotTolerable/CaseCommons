@@ -60,5 +60,26 @@ SQLite-only deployment is fully supported and is the default Fly.io path below. 
 - Missing tables / OperationalError: check logs for "Database schema missing tables" and run `flask db upgrade` inside the container or via Fly release command.
 - CSRF failures redirect back with a warning and log the failing path/IP; refresh the page and resubmit.
 - Quill not loading: browser console will show "Quill failed to load"—ensure CDN access or bundle the asset locally.
+- Sessions/logins: ensure `SECRET_KEY` is stable, set `SESSION_COOKIE_SECURE=true` when serving over HTTPS (Fly), and confirm the browser accepts cookies.
+
+## Local setup: email verification
+- Required env vars when sending real email (set in `.env` or Fly secrets):
+  - `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`
+  - TLS/SSL toggles: `MAIL_USE_TLS` (default true), `MAIL_USE_SSL` (default false)
+  - `APP_BASE_URL` (e.g., `https://<your-app>.fly.dev`) so verification links are correct when no request context is available.
+- Development defaults:
+  - `MAIL_DEV_LOG_ONLY=true` logs verification links to the server console and still counts as a successful send for local testing.
+  - No SMTP server is needed in this mode.
+- Optional local inbox (Mailpit):
+  - Start: `docker compose --profile mail up mailpit` (UI at http://localhost:8025, SMTP at :1025).
+  - Configure env: `MAIL_SERVER=mailpit`, `MAIL_PORT=1025`, `MAIL_USE_TLS=false`, `MAIL_DEV_LOG_ONLY=false`, `MAIL_DEFAULT_SENDER=dev@localhost`.
+- Fly deployment with SMTP:
+  - Set the mail secrets above via `fly secrets set ...`.
+  - Use a provider/sandbox that allows your sender address; complete any domain verification required by your provider.
+  - Set `APP_BASE_URL=https://<your-app>.fly.dev` so verification links work in release commands.
+- Troubleshooting missing emails:
+  - Check Fly logs for `Verification email failed` messages.
+  - Confirm the sender address is authorized by your provider and the credentials are correct.
+  - Ensure `MAIL_DEV_LOG_ONLY` is `false` when you expect real delivery and that outbound SMTP is allowed in your environment.
 
 This application is fully functional on SQLite when deployed with a Fly volume; Postgres is optional, not required for core features.

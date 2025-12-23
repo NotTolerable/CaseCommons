@@ -1,7 +1,9 @@
 import logging
 import os
+import smtplib
+from email.message import EmailMessage
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from flask import Flask, render_template, redirect, url_for, session, flash, request, abort, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -30,6 +32,9 @@ def create_app(test_config=None):
     app = Flask(__name__)
 
     app.logger.setLevel(logging.INFO)
+
+    def env_flag(name, default=False):
+        return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
 
     def _normalized_database_uri():
         url = os.environ.get("DATABASE_URL")
@@ -67,10 +72,22 @@ def create_app(test_config=None):
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=env_flag("SESSION_COOKIE_SECURE", False),
+        REMEMBER_COOKIE_SECURE=env_flag("SESSION_COOKIE_SECURE", False),
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         UPLOAD_FOLDER=os.environ.get("UPLOAD_FOLDER", "/data/uploads"),
         SECURITY_PASSWORD_SALT=os.environ.get("SECURITY_PASSWORD_SALT", "salty"),
         REMEMBER_COOKIE_HTTPONLY=True,
         WTF_CSRF_TIME_LIMIT=None,
+        MAIL_SERVER=os.getenv("MAIL_SERVER"),
+        MAIL_PORT=int(os.getenv("MAIL_PORT", "587")),
+        MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+        MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+        MAIL_USE_TLS=env_flag("MAIL_USE_TLS", True),
+        MAIL_USE_SSL=env_flag("MAIL_USE_SSL", False),
+        MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER"),
+        MAIL_DEV_LOG_ONLY=env_flag("MAIL_DEV_LOG_ONLY", False),
+        APP_BASE_URL=os.getenv("APP_BASE_URL"),
     )
 
     if not app.config["SQLALCHEMY_DATABASE_URI"]:
@@ -232,16 +249,67 @@ def create_app(test_config=None):
         db.session.add(entry)
         db.session.commit()
 
-    def send_verification_email(user):
+    def build_verification_url(token: str) -> str:
+        path = url_for("verify_email", token=token, _external=False)
+        base_url = app.config.get("APP_BASE_URL")
+        if base_url:
+            return urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+        try:
+            return url_for("verify_email", token=token, _external=True)
+        except RuntimeError:
+            # Outside request context; fall back to configured base or relative path
+            return path
+
+    def send_verification_email(user) -> bool:
+        """Send a verification email; return True on success, False on failure."""
         serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
         token = serializer.dumps(user.email, salt=app.config["SECURITY_PASSWORD_SALT"])
-        url = url_for("verify_email", token=token, _external=True)
-        # placeholder email sending; log to console
-        app.logger.info("Verification email for %s: %s", user.email, url)
+        verify_url = build_verification_url(token)
+
         # store token for validation tracking
         email_token = EmailToken(user_id=user.id, token=token, created_at=datetime.utcnow())
         db.session.add(email_token)
         db.session.commit()
+
+        mail_server = app.config.get("MAIL_SERVER")
+        dev_mailer = app.config.get("MAIL_DEV_LOG_ONLY") or not mail_server
+        sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
+
+        if dev_mailer:
+            app.logger.info("DEV MAILER: Verification link for %s -> %s", user.email, verify_url)
+            return True
+
+        if not sender:
+            app.logger.error("MAIL_DEFAULT_SENDER is not configured; cannot send verification email to %s", user.email)
+            return False
+
+        msg = EmailMessage()
+        msg["Subject"] = "Verify your Case Commons account"
+        msg["From"] = sender
+        msg["To"] = user.email
+        msg.set_content(
+            f"Hi {user.username},\n\n"
+            f"Please verify your account by visiting:\n{verify_url}\n\n"
+            "If you did not sign up, ignore this email."
+        )
+        try:
+            if app.config.get("MAIL_USE_SSL"):
+                with smtplib.SMTP_SSL(mail_server, app.config["MAIL_PORT"]) as smtp:
+                    if app.config.get("MAIL_USERNAME"):
+                        smtp.login(app.config["MAIL_USERNAME"], app.config.get("MAIL_PASSWORD"))
+                    smtp.send_message(msg)
+            else:
+                with smtplib.SMTP(mail_server, app.config["MAIL_PORT"]) as smtp:
+                    if app.config.get("MAIL_USE_TLS"):
+                        smtp.starttls()
+                    if app.config.get("MAIL_USERNAME"):
+                        smtp.login(app.config["MAIL_USERNAME"], app.config.get("MAIL_PASSWORD"))
+                    smtp.send_message(msg)
+            app.logger.info("Sent verification email to %s", user.email)
+            return True
+        except Exception as exc:
+            app.logger.error("Verification email failed for %s: %s", user.email, exc)
+            return False
 
     def verify_token(token, expiration=86400):
         serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
@@ -289,8 +357,8 @@ def create_app(test_config=None):
     @rate_limit(lambda: f"register:{request.remote_addr}", limit=3, per=60)
     def register():
         if request.method == "POST":
-            username = request.form.get("username").strip()
-            email = request.form.get("email").strip().lower()
+            username = (request.form.get("username") or "").strip()
+            email = (request.form.get("email") or "").strip().lower()
             password = request.form.get("password")
             if not username or not email or not password:
                 flash("All fields are required", "danger")
@@ -301,8 +369,10 @@ def create_app(test_config=None):
             user = User(username=username, email=email, password_hash=hash_password(password), email_verified=False, role="user", status="active", created_at=datetime.utcnow())
             db.session.add(user)
             db.session.commit()
-            send_verification_email(user)
-            flash("Account created. Check email for verification.", "info")
+            if send_verification_email(user):
+                flash("Account created. Check email for verification.", "info")
+            else:
+                flash("Account created but verification email could not be sent. Please verify mail settings and try resending.", "danger")
             return redirect(url_for("login"))
         return render_template("register.html")
 
@@ -321,21 +391,37 @@ def create_app(test_config=None):
             flash("Email verified. You may now participate.", "success")
         return redirect(url_for("login"))
 
+    @app.route("/resend-verification", methods=["POST"])
+    @login_required
+    def resend_verification():
+        if current_user.email_verified:
+            flash("Email already verified.", "info")
+            return redirect(request.referrer or url_for("index"))
+        if send_verification_email(current_user):
+            flash("Verification email sent.", "success")
+        else:
+            flash("Could not send verification email. Check mail settings and try again.", "danger")
+        return redirect(request.referrer or url_for("index"))
+
     @app.route("/login", methods=["GET", "POST"])
     @rate_limit(lambda: f"login:{request.remote_addr}", limit=5, per=60)
     def login():
         if request.method == "POST":
-            username = request.form.get("username")
+            username = (request.form.get("username") or "").strip()
             password = request.form.get("password")
-            user = User.query.filter_by(username=username).first()
+            user = User.query.filter((User.username == username) | (User.email == username)).first()
             if not user or not verify_password(password, user.password_hash):
                 flash("Invalid credentials", "danger")
                 return redirect(url_for("login"))
             if user.status == "banned":
                 flash("Your account is banned.", "danger")
                 return redirect(url_for("login"))
-            login_user(user)
-            flash("Welcome back", "success")
+            session.permanent = True
+            login_user(user, remember=True, duration=timedelta(days=30))
+            if not user.email_verified:
+                flash("Welcome back. Please verify your email to participate fully.", "warning")
+            else:
+                flash("Welcome back", "success")
             return redirect(url_for("index"))
         return render_template("login.html")
 

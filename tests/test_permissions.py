@@ -53,3 +53,28 @@ def test_moderation_log_created_on_action(app, client):
     with app.app_context():
         entry = ModerationLog.query.filter_by(target_id=target_id, action='ban').first()
         assert entry is not None
+
+
+def test_login_succeeds_first_try(client):
+    resp = client.post('/login', data={'username': 'admin', 'password': 'pass'}, follow_redirects=True)
+    assert b'Welcome back' in resp.data
+    assert b'Hi, admin' in resp.data
+
+
+def test_session_persists_between_pages(client):
+    client.post('/login', data={'username': 'admin', 'password': 'pass'}, follow_redirects=True)
+    resp = client.get('/discussions')
+    assert b'Hi, admin' in resp.data
+    assert b'Discussions' in resp.data
+
+
+def test_create_discussion_when_logged_in(client):
+    client.post('/login', data={'username': 'admin', 'password': 'pass'}, follow_redirects=True)
+    resp = client.post('/discussions/new', data={'title': 'Test Topic', 'body': 'Body text'}, follow_redirects=True)
+    assert b'Discussion created' in resp.data
+    assert b'Test Topic' in resp.data
+
+
+def test_invalid_credentials_message_not_stacked(client):
+    resp = client.post('/login', data={'username': 'admin', 'password': 'wrong'}, follow_redirects=True)
+    assert resp.data.count(b'Invalid credentials') == 1

@@ -22,7 +22,7 @@
         {% elif not current_user.email_verified %}
           <div class="alert alert-info">Verify your email to participate.</div>
         {% else %}
-          <form method="post" action="{{ url_for('add_comment', parent_type='discussion', parent_id=post.id) }}">
+          <form method="post" action="{{ url_for('add_comment', parent_type='discussion', parent_id=post.id) }}" data-single-submit>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <textarea class="form-control mb-2" name="body" rows="3"></textarea>
             <button class="btn btn-primary">Submit</button>
