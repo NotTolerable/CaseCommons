@@ -1,0 +1,26 @@
+version: '3.9'
+services:
+  web:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/app.db}
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - data:/data
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: casecommons
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    profiles: ["postgres"]
+volumes:
+  pgdata:
+  data:

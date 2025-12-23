@@ -1,0 +1,19 @@
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f7f8fb;
+}
+h1, h2, h3, h4, h5 {
+  font-family: 'Playfair Display', serif;
+}
+.hero {
+  background: linear-gradient(135deg, #f3f6fc 0%, #ffffff 80%);
+}
+.hero-image {
+  background-image: url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80');
+  background-size: cover;
+  background-position: center;
+  height: 280px;
+}
+.report-body img {max-width:100%;}
+.report-body { line-height: 1.7; font-size: 1.05rem; }
+.navbar-brand { letter-spacing: 0.5px; }
