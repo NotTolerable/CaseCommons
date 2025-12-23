@@ -29,6 +29,7 @@ SQLite-only deployment is fully supported and is the default Fly.io path below. 
 
 2. **Create the data volume (DB + uploads)**
    - `fly volumes create data --app <app-name> --region <region> --size 1`
+   - If you scale to more than one machine (e.g., `fly scale count 2`), either reduce back to one machine or create one volume per machine: `fly volumes create data --app <app-name> --region <region> --size 1 --count <machine-count>`.
    - `fly.toml` mounts this volume at `/data`, which holds both the SQLite DB (`/data/app.db`) and uploads (`/data/uploads`).
 
 3. **Set required secrets** (at minimum)
@@ -58,6 +59,7 @@ SQLite-only deployment is fully supported and is the default Fly.io path below. 
 
 ## Troubleshooting
 - Missing tables / OperationalError: check logs for "Database schema missing tables" and run `flask db upgrade` inside the container or via Fly release command.
+- Missing volume / deploy error (`Process group 'app' needs volumes with name 'data'`): create the volume(s) in the primary region with `fly volumes create data --app <app-name> --region <region> --size 1 [--count N]`, or scale the app down to one machine with `fly scale count 1` if you only create a single volume.
 - CSRF failures redirect back with a warning and log the failing path/IP; refresh the page and resubmit.
 - Quill not loading: browser console will show "Quill failed to load"—ensure CDN access or bundle the asset locally.
 - Sessions/logins: ensure `SECRET_KEY` is stable, set `SESSION_COOKIE_SECURE=true` when serving over HTTPS (Fly), and confirm the browser accepts cookies.
