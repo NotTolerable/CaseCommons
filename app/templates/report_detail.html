@@ -19,8 +19,6 @@
       {% if current_user.is_authenticated %}
         {% if current_user.status == 'muted' %}
           <div class="alert alert-warning">You are muted and cannot comment.</div>
-        {% elif not current_user.email_verified %}
-          <div class="alert alert-info">Verify your email to participate.</div>
         {% else %}
           <form method="post" action="{{ url_for('add_comment', parent_type='report', parent_id=report.id) }}" data-single-submit>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

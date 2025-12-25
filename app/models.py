@@ -76,3 +76,13 @@ class ModerationLog(db.Model):
     actor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     reason = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class AccountApplication(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    statement = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default="pending", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    decided_at = db.Column(db.DateTime)

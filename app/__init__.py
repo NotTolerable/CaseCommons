@@ -1,18 +1,14 @@
 import logging
 import os
-import smtplib
-from email.message import EmailMessage
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 from flask import Flask, render_template, redirect, url_for, session, flash, request, abort, send_from_directory
-import requests
 import resend
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError, generate_csrf
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from datetime import datetime, timedelta
 from functools import wraps
 import bleach
@@ -130,7 +126,7 @@ def create_app(test_config=None):
         flash("Form expired or invalid. Please try again.", "danger")
         return redirect(request.referrer or url_for("index")), 400
 
-    from .models import User, Report, Discussion, Comment, EmailToken, ModerationLog, ReportImage
+    from .models import User, Report, Discussion, Comment, ModerationLog, ReportImage, AccountApplication
     from .security import hash_password, verify_password
 
     @login_manager.user_loader
@@ -151,8 +147,8 @@ def create_app(test_config=None):
             "discussion",
             "comment",
             "report_image",
-            "email_token",
             "moderation_log",
+            "account_application",
         ]
         missing = [t for t in required_tables if not inspector.has_table(t)]
         if missing:
@@ -253,100 +249,30 @@ def create_app(test_config=None):
         db.session.add(entry)
         db.session.commit()
 
-    def build_verification_url(token: str) -> str:
-        path = url_for("verify_email", token=token, _external=False)
-        base_url = app.config.get("APP_BASE_URL")
-        if base_url:
-            return urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
-        try:
-            return url_for("verify_email", token=token, _external=True)
-        except RuntimeError:
-            # Outside request context; fall back to configured base or relative path
-            return path
-
-    def send_verification_email(user) -> bool:
-        """Send a verification email; return True on success, False on failure."""
-        serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
-        token = serializer.dumps(user.email, salt=app.config["SECURITY_PASSWORD_SALT"])
-        verify_url = build_verification_url(token)
-
-        # store token for validation tracking
-        email_token = EmailToken(user_id=user.id, token=token, created_at=datetime.utcnow())
-        db.session.add(email_token)
-        db.session.commit()
-
-        resend_key = app.config.get("RESEND_API_KEY")
-        resend_from = app.config.get("RESEND_FROM") or app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
-        mail_server = app.config.get("MAIL_SERVER")
-        dev_mailer = app.config.get("MAIL_DEV_LOG_ONLY") or not (resend_key or mail_server)
-        sender = resend_from or "onboarding@resend.dev"
-
-        if dev_mailer:
-            app.logger.info("DEV MAILER: Verification link for %s -> %s", user.email, verify_url)
-            return True
-
-        if resend_key:
-            try:
-                resend.api_key = resend_key
-                email_payload = {
-                    "from": sender,
-                    "to": user.email,
-                    "subject": "Verify your Case Commons account",
-                    "html": f"<p>Hi {user.username},</p><p>Please verify your account by visiting:<br><a href=\"{verify_url}\">{verify_url}</a></p><p>If you did not sign up, ignore this email.</p>",
-                }
-                resp = resend.Emails.send(email_payload)
-                if getattr(resp, "id", None):
-                    app.logger.info("Sent verification email via Resend to %s (id=%s)", user.email, resp.id)
-                    return True
-                app.logger.error("Resend API error for %s: %s", user.email, resp)
-                return False
-            except Exception as exc:
-                app.logger.error("Resend call failed for %s: %s", user.email, exc)
-                return False
-
-        if not sender or not mail_server:
-            app.logger.error("Mail settings incomplete; cannot send verification email to %s", user.email)
-            return False
-
-        msg = EmailMessage()
-        msg["Subject"] = "Verify your Case Commons account"
-        msg["From"] = sender
-        msg["To"] = user.email
-        msg.set_content(
-            f"Hi {user.username},\n\n"
-            f"Please verify your account by visiting:\n{verify_url}\n\n"
-            "If you did not sign up, ignore this email."
-        )
-        try:
-            if app.config.get("MAIL_USE_SSL"):
-                with smtplib.SMTP_SSL(mail_server, app.config["MAIL_PORT"]) as smtp:
-                    if app.config.get("MAIL_USERNAME"):
-                        smtp.login(app.config["MAIL_USERNAME"], app.config.get("MAIL_PASSWORD"))
-                    smtp.send_message(msg)
-            else:
-                with smtplib.SMTP(mail_server, app.config["MAIL_PORT"]) as smtp:
-                    if app.config.get("MAIL_USE_TLS"):
-                        smtp.starttls()
-                    if app.config.get("MAIL_USERNAME"):
-                        smtp.login(app.config["MAIL_USERNAME"], app.config.get("MAIL_PASSWORD"))
-                    smtp.send_message(msg)
-            app.logger.info("Sent verification email via SMTP to %s", user.email)
-            return True
-        except Exception as exc:
-            app.logger.error("Verification email failed for %s: %s", user.email, exc)
-            return False
-
-    def verify_token(token, expiration=86400):
-        serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
-        try:
-            email = serializer.loads(token, salt=app.config["SECURITY_PASSWORD_SALT"], max_age=expiration)
-            return email
-        except (BadSignature, SignatureExpired):
-            return None
-
     @app.context_processor
     def inject_globals():
         return {"current_year": datetime.utcnow().year}
+
+    def send_email_notification(to_email, subject, html_body):
+        resend_key = app.config.get("RESEND_API_KEY")
+        sender = app.config.get("RESEND_FROM") or "onboarding@resend.dev"
+        dev_mailer = app.config.get("MAIL_DEV_LOG_ONLY") or not resend_key
+        if dev_mailer:
+            app.logger.info("DEV MAILER: %s -> %s | %s", subject, to_email, html_body)
+            return True
+        try:
+            resend.api_key = resend_key
+            resp = resend.Emails.send(
+                {"from": sender, "to": to_email, "subject": subject, "html": html_body}
+            )
+            if getattr(resp, "id", None):
+                app.logger.info("Sent email via Resend to %s (id=%s)", to_email, resp.id)
+                return True
+            app.logger.error("Resend API error for %s: %s", to_email, resp)
+            return False
+        except Exception as exc:
+            app.logger.error("Resend send failed for %s: %s", to_email, exc)
+            return False
 
     @app.route("/")
     def index():
@@ -367,6 +293,16 @@ def create_app(test_config=None):
         comments = Comment.query.filter_by(parent_type="report", parent_id=report.id).order_by(Comment.created_at.asc()).all()
         return render_template("report_detail.html", report=report, comments=comments)
 
+    @app.route("/reports")
+    def reports():
+        q = request.args.get("q")
+        report_query = Report.query.filter_by(published=True)
+        if q:
+            like = f"%{q}%"
+            report_query = report_query.filter(or_(Report.title.ilike(like), Report.body_html.ilike(like)))
+        reports = report_query.order_by(Report.created_at.desc()).all()
+        return render_template("reports.html", reports=reports)
+
     @app.route("/discussions")
     def discussions():
         posts = Discussion.query.order_by(Discussion.created_at.desc()).all()
@@ -378,55 +314,28 @@ def create_app(test_config=None):
         comments = Comment.query.filter_by(parent_type="discussion", parent_id=discussion_id).order_by(Comment.created_at.asc()).all()
         return render_template("discussion_detail.html", post=post, comments=comments)
 
-    @app.route("/register", methods=["GET", "POST"])
-    @rate_limit(lambda: f"register:{request.remote_addr}", limit=3, per=60)
-    def register():
+    @app.route("/apply", methods=["GET", "POST"])
+    def apply():
         if request.method == "POST":
-            username = (request.form.get("username") or "").strip()
+            full_name = (request.form.get("full_name") or "").strip()
             email = (request.form.get("email") or "").strip().lower()
-            password = request.form.get("password")
-            if not username or not email or not password:
-                flash("All fields are required", "danger")
-                return redirect(url_for("register"))
-            if User.query.filter((User.username == username) | (func.lower(User.email) == email)).first():
-                flash("User already exists", "warning")
-                return redirect(url_for("register"))
-            user = User(username=username, email=email, password_hash=hash_password(password), email_verified=False, role="user", status="active", created_at=datetime.utcnow())
-            db.session.add(user)
+            statement = (request.form.get("statement") or "").strip()
+            if not full_name or not email or not statement:
+                flash("All fields are required.", "danger")
+                return redirect(url_for("apply"))
+            if User.query.filter(func.lower(User.email) == email).first():
+                flash("An account with this email already exists.", "warning")
+                return redirect(url_for("apply"))
+            existing = AccountApplication.query.filter(func.lower(AccountApplication.email) == email, AccountApplication.status == "pending").first()
+            if existing:
+                flash("You already have a pending application.", "info")
+                return redirect(url_for("apply"))
+            application = AccountApplication(full_name=full_name, email=email, statement=statement, status="pending", created_at=datetime.utcnow())
+            db.session.add(application)
             db.session.commit()
-            if send_verification_email(user):
-                flash("Account created. Check email for verification.", "info")
-            else:
-                flash("Account created but verification email could not be sent. Please verify mail settings and try resending.", "danger")
-            return redirect(url_for("login"))
-        return render_template("register.html")
-
-    @app.route("/verify/<token>")
-    def verify_email(token):
-        email = verify_token(token)
-        if not email:
-            flash("Invalid or expired verification link", "danger")
-            return redirect(url_for("login"))
-        user = User.query.filter_by(email=email).first_or_404()
-        if user.email_verified:
-            flash("Email already verified", "info")
-        else:
-            user.email_verified = True
-            db.session.commit()
-            flash("Email verified. You may now participate.", "success")
-        return redirect(url_for("login"))
-
-    @app.route("/resend-verification", methods=["POST"])
-    @login_required
-    def resend_verification():
-        if current_user.email_verified:
-            flash("Email already verified.", "info")
-            return redirect(request.referrer or url_for("index"))
-        if send_verification_email(current_user):
-            flash("Verification email sent.", "success")
-        else:
-            flash("Could not send verification email. Check mail settings and try again.", "danger")
-        return redirect(request.referrer or url_for("index"))
+            flash("Application submitted. We'll review and respond soon.", "success")
+            return redirect(url_for("index"))
+        return render_template("apply.html")
 
     @app.route("/login", methods=["GET", "POST"])
     @rate_limit(lambda: f"login:{request.remote_addr}", limit=5, per=60)
@@ -461,9 +370,6 @@ def create_app(test_config=None):
         if current_user.status == "banned":
             logout_user()
             abort(403)
-        if not current_user.email_verified:
-            flash("Verify your email before participating.", "warning")
-            return False
         if current_user.status == "muted":
             flash("You are muted and cannot contribute.", "warning")
             return False
@@ -526,7 +432,61 @@ def create_app(test_config=None):
         reports = Report.query.order_by(Report.created_at.desc()).all()
         users = User.query.order_by(User.created_at.desc()).all()
         discussions = Discussion.query.order_by(Discussion.created_at.desc()).all()
-        return render_template("admin/index.html", reports=reports, users=users, discussions=discussions)
+        applications = AccountApplication.query.order_by(AccountApplication.created_at.desc()).all()
+        return render_template("admin/index.html", reports=reports, users=users, discussions=discussions, applications=applications)
+
+    @app.route("/admin/applications/<int:application_id>")
+    @login_required
+    @admin_required
+    def admin_application_detail(application_id):
+        application = AccountApplication.query.get_or_404(application_id)
+        return render_template("admin/application_detail.html", application=application)
+
+    @app.route("/admin/applications/<int:application_id>/reject", methods=["POST"])
+    @login_required
+    @admin_required
+    def admin_application_reject(application_id):
+        application = AccountApplication.query.get_or_404(application_id)
+        application.status = "rejected"
+        application.decided_at = datetime.utcnow()
+        db.session.commit()
+        flash("Application rejected.", "info")
+        return redirect(url_for("admin_index"))
+
+    @app.route("/admin/applications/<int:application_id>/approve", methods=["POST"])
+    @login_required
+    @admin_required
+    def admin_application_approve(application_id):
+        application = AccountApplication.query.get_or_404(application_id)
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password")
+        if not username or not password:
+            flash("Username and password are required to create an account.", "danger")
+            return redirect(url_for("admin_application_detail", application_id=application.id))
+        if User.query.filter((User.username == username) | (func.lower(User.email) == application.email.lower())).first():
+            flash("A user with that username or email already exists.", "danger")
+            return redirect(url_for("admin_application_detail", application_id=application.id))
+        user = User(
+            username=username,
+            email=application.email.lower(),
+            password_hash=hash_password(password),
+            email_verified=True,
+            role="user",
+            status="active",
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(user)
+        application.status = "approved"
+        application.decided_at = datetime.utcnow()
+        db.session.commit()
+        log_moderation("approve_application", "application", application.id, reason="admin approval")
+        send_email_notification(
+            application.email,
+            "Your Case Commons account",
+            f"<p>Hi {application.full_name},</p><p>Your account has been approved.</p><p><strong>Username:</strong> {username}<br><strong>Password:</strong> {password}</p><p>Please log in and update your password after signing in.</p>",
+        )
+        flash("Account created and applicant notified.", "success")
+        return redirect(url_for("admin_index"))
 
     @app.route("/admin/users/new", methods=["GET", "POST"])
     @login_required

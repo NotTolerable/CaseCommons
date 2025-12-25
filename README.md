@@ -11,10 +11,11 @@ Light-theme Flask app for law student case analysis reports and discussions.
 5. Seed data for quick testing: `docker compose run --rm web python seed.py`.
 
 ## Accounts
-- Admin: `admin@example.com` / `password` (use this for `/admin`)
+- Admin: `admin@example.com` / `password` (use this for `/admin` to create/manage users)
 - User: `user@example.com` / `password`
 - Muted: `muted@example.com` / `password`
 - Banned: `banned@example.com` / `password`
+- Public signup is disabled. Applicants submit via `/apply`, and admins approve + create accounts in the admin panel.
 
 ## Tests
 - Unit/integration suite: `pytest`
@@ -49,7 +50,7 @@ SQLite-only deployment is fully supported and is the default Fly.io path below. 
    - `fly status` and `fly open` for health checks.
 
 6. **Post-deploy sanity checks**
-   - Visit the site, sign up a test user, and confirm email verification gating.
+   - Visit the site, submit an application via `/apply`, approve it in `/admin`, and confirm the created account can log in.
    - Upload an image in the admin report editor and verify it persists in `/data/uploads`.
    - Create a discussion/comment to confirm muted/banned rules behave as expected.
 
@@ -64,13 +65,13 @@ SQLite-only deployment is fully supported and is the default Fly.io path below. 
 - Quill not loading: browser console will show "Quill failed to load"—ensure CDN access or bundle the asset locally.
 - Sessions/logins: ensure `SECRET_KEY` is stable, set `SESSION_COOKIE_SECURE=true` when serving over HTTPS (Fly), and confirm the browser accepts cookies.
 
-## Local setup: email verification
-- Required env vars when sending real email (set in `.env` or Fly secrets):
-  - **Resend (recommended):** `RESEND_API_KEY` (e.g., `re_xxx`), `RESEND_FROM` (verified sender, e.g., `Case Commons <hello@yourdomain.com>`). No SMTP host/port needed.
+## Local setup: application approval emails
+- Required env vars when emailing applicants (set in `.env` or Fly secrets):
+  - **Resend (recommended):** `RESEND_API_KEY` (e.g., `re_xxx`), `RESEND_FROM` (verified sender, e.g., `Case Commons <hello@yourdomain.com>`).
   - **SMTP (alternative):** `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`, `MAIL_USE_TLS`/`MAIL_USE_SSL`.
-  - `APP_BASE_URL` (e.g., `https://<your-app>.fly.dev`) so verification links are correct when no request context is available.
+  - `APP_BASE_URL` (optional) if you include links in mail content.
 - Development defaults:
-  - `MAIL_DEV_LOG_ONLY=true` logs verification links to the server console and still counts as a successful send for local testing.
+  - `MAIL_DEV_LOG_ONLY=true` logs outbound mail content to the server console instead of sending.
   - No SMTP/Resend key is needed in this mode.
 - Optional local inbox (Mailpit):
   - Start: `docker compose --profile mail up mailpit` (UI at http://localhost:8025, SMTP at :1025).
@@ -78,9 +79,8 @@ SQLite-only deployment is fully supported and is the default Fly.io path below. 
 - Fly deployment with Resend:
   - Set `RESEND_API_KEY` and `RESEND_FROM` via `fly secrets set ...`.
   - Ensure the sender is authorized/verified in Resend.
-  - Set `APP_BASE_URL=https://<your-app>.fly.dev` so verification links work in release commands.
 - Troubleshooting missing emails:
-  - Check Fly logs for `Resend API error` or `Verification email failed` messages.
+  - Check Fly logs for `Resend API error` messages.
   - Confirm the sender address is authorized and the Resend key is valid.
   - Ensure `MAIL_DEV_LOG_ONLY` is `false` when you expect real delivery and that outbound HTTPS is allowed in your environment.
 
