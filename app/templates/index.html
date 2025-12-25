@@ -1,53 +1,62 @@
 {% extends 'base.html' %}
 {% block title %}Home - Case Commons{% endblock %}
 {% block content %}
-<section class="hero mb-5 p-5 rounded-4 shadow-sm">
-  <div class="container">
-    <div class="row align-items-center gy-4">
-      <div class="col-lg-7 position-relative">
-        <p class="text-uppercase small text-primary fw-semibold mb-2">CaseCommons Community</p>
-        <h1 class="display-5 fw-bold mb-3 section-heading text-white">Sharper analysis. Shared insight.</h1>
-        <p class="lead text-light">A modern hub for law students to publish case reports, workshop arguments, and grow together with curated visuals and a streamlined workflow.</p>
-        <div class="d-flex flex-wrap gap-3 mt-4">
-          <a href="#reports" class="btn btn-primary px-4">Explore reports</a>
-          <a href="{{ url_for('discussions') }}" class="btn btn-outline-primary px-4 bg-white bg-opacity-10 text-white border-0">Join discussions</a>
-          <a href="{{ url_for('apply') }}" class="btn btn-link text-white text-decoration-underline">Apply for access</a>
-        </div>
-        <div class="d-flex gap-4 mt-4 text-light small">
-          <div><strong class="text-primary">Structured briefs</strong><br>Cleaner formatting with inline visuals.</div>
-          <div><strong class="text-primary">Peer rigor</strong><br>Moderated comments and admin reviews.</div>
-        </div>
-      </div>
-      <div class="col-lg-5">
-        <div class="preview-card">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div>
-              <span class="badge bg-primary bg-opacity-10 text-primary">Sample Report</span>
-              <h3 class="h5 mt-2 mb-1">Law Library Safety Review</h3>
-              <div class="preview-meta">Torts • Updated 2 days ago</div>
-            </div>
-          </div>
-          <p class="text-muted mb-3">Assessing duty of care owed by campus libraries to student patrons, focusing on recent precedent and risk mitigation protocols.</p>
-          <p class="text-muted mb-4">Includes annotated case citations and a recommended remediation checklist tailored to academic environments.</p>
-          <a class="preview-link" href="#reports">View report →</a>
-        </div>
-      </div>
+{% set featured = reports[0] if reports|length > 0 else None %}
+{% set remaining_reports = reports[1:] if reports|length > 1 else [] %}
+
+<section class="hero mb-5">
+  <div class="hero-panel text-center">
+    <p class="text-uppercase small text-primary fw-semibold mb-3">CaseCommons Community</p>
+    <h1 class="display-5 fw-bold mb-3 section-heading">Sharper analysis. Shared insight.</h1>
+    <p class="lead text-muted mb-4">A modern hub for law students to publish case reports, workshop arguments, and grow together in a trusted, academic setting.</p>
+    <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
+      <a href="#reports" class="btn btn-primary">Explore reports</a>
+      <a href="{{ url_for('discussions') }}" class="btn btn-outline-primary">Join discussions</a>
+      <a href="{{ url_for('apply') }}" class="btn btn-link">Apply for access</a>
     </div>
+    {% if featured %}
+    <div class="preview-card mx-auto" style="max-width: 720px;">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <span class="badge bg-primary">Featured report</span>
+          <h3 class="h5 mt-2 mb-1">{{ featured.title }}</h3>
+          <div class="preview-meta">
+            Updated {{ featured.updated_at.strftime('%b %d, %Y') }}
+          </div>
+        </div>
+      </div>
+      <p class="text-muted mb-3">{{ featured.body_html|striptags|truncate(200, True, '...') }}</p>
+      <a class="preview-link" href="{{ url_for('report_detail', slug=featured.slug) }}">View report →</a>
+    </div>
+    {% else %}
+    <div class="preview-card mx-auto text-muted" style="max-width: 720px;">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <strong>No reports published yet</strong>
+      </div>
+      <p class="mb-3">Be the first to publish a case report and set the tone for the community.</p>
+      {% if current_user.is_authenticated and current_user.is_admin %}
+        <a class="btn btn-primary" href="{{ url_for('admin_report_new') }}">Create the first report</a>
+      {% else %}
+        <a class="btn btn-outline-primary" href="{{ url_for('apply') }}">Apply for access</a>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 </section>
 
 <section class="mb-5" id="reports">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <p class="text-uppercase small text-primary fw-semibold mb-1">Featured</p>
+      <p class="text-uppercase small text-primary fw-semibold mb-1">Reports</p>
       <h2 class="h4 fw-semibold">Recent reports</h2>
     </div>
     {% if current_user.is_authenticated and current_user.is_admin %}
       <a href="{{ url_for('admin_index') }}" class="btn btn-sm btn-outline-primary">Admin</a>
     {% endif %}
   </div>
+  {% if remaining_reports %}
   <div class="row g-4">
-    {% for report in reports %}
+    {% for report in remaining_reports %}
     <div class="col-md-6">
       <div class="card h-100 shadow-sm border-0 rounded-4">
         <div class="card-body">
@@ -55,14 +64,24 @@
             <span class="badge bg-primary bg-opacity-10 text-primary">{{ report.created_at.strftime('%b %d, %Y') }}</span>
           </div>
           <h3 class="h5 mb-2"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=report.slug) }}">{{ report.title }}</a></h3>
-          <p class="text-muted mb-0">{{ report.body_html[:140]|striptags }}...</p>
+          <p class="text-muted mb-0">{{ report.body_html|striptags|truncate(140, True, '...') }}</p>
         </div>
       </div>
     </div>
-    {% else %}
-      <p class="text-muted">No reports yet.</p>
     {% endfor %}
   </div>
+  {% else %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body text-center text-muted">
+        <p class="mb-3">No recent reports yet.</p>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+          <a class="btn btn-primary" href="{{ url_for('admin_report_new') }}">Create a report</a>
+        {% else %}
+          <a class="btn btn-outline-primary" href="{{ url_for('apply') }}">Apply to contribute</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
 </section>
 
 <section class="mb-5">
