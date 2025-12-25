@@ -120,6 +120,28 @@ def create_app(test_config=None):
     login_manager.login_view = "login"
     app.jinja_env.globals['csrf_token'] = generate_csrf
 
+    def ensure_bootstrap_admin():
+        """Ensure at least one admin account exists using env defaults."""
+        with app.app_context():
+            admin_exists = User.query.filter_by(role="admin").first()
+            if admin_exists:
+                return
+            username = os.getenv("ADMIN_USERNAME", "admin")
+            email = os.getenv("ADMIN_EMAIL", "admin@example.com")
+            password = os.getenv("ADMIN_PASSWORD", "password")
+            admin = User(
+                username=username,
+                email=email,
+                password_hash=hash_password(password),
+                email_verified=True,
+                role="admin",
+                status="active",
+                created_at=datetime.utcnow(),
+            )
+            db.session.add(admin)
+            db.session.commit()
+            app.logger.warning("Bootstrap admin created: %s / %s (change password after login)", username, email)
+
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):
         app.logger.warning("CSRF validation failed on %s from %s: %s", request.path, request.remote_addr, e.description)
@@ -190,6 +212,7 @@ def create_app(test_config=None):
     def _ensure_schema():
         check_schema_once()
         check_migrations_once()
+        ensure_bootstrap_admin()
 
     def admin_required(f):
         @wraps(f)

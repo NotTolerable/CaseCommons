@@ -11,7 +11,7 @@ Light-theme Flask app for law student case analysis reports and discussions.
 5. Seed data for quick testing: `docker compose run --rm web python seed.py`.
 
 ## Accounts
-- Admin: `admin@example.com` / `password` (use this for `/admin` to create/manage users)
+- Admin: `admin@example.com` / `password` (use this for `/admin` to create/manage users). If missing, either run `docker compose run --rm web python seed.py` or set `ADMIN_EMAIL`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD` and restart—an admin will be auto-created on boot.
 - User: `user@example.com` / `password`
 - Muted: `muted@example.com` / `password`
 - Banned: `banned@example.com` / `password`
