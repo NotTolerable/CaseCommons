@@ -1,0 +1,112 @@
+:root {
+  --cc-primary: #a12f52;
+  --cc-primary-soft: #fbeaf0;
+  --cc-primary-strong: #801f3e;
+  --cc-ink: #1f1f2b;
+  --cc-muted: #5a5f73;
+}
+
+body {
+  font-family: 'Open Sans', sans-serif;
+  background: radial-gradient(circle at 5% 5%, #fff7fb, #f7f8fb 32%);
+  color: var(--cc-ink);
+}
+h1, h2, h3, h4, h5 {
+  font-family: 'Playfair Display', serif;
+}
+
+.navbar {
+  background: #fff;
+  border-bottom: 1px solid #f0e6eb;
+}
+.navbar-brand {
+  letter-spacing: 0.5px;
+  color: var(--cc-primary) !important;
+}
+
+.btn-primary {
+  background-color: var(--cc-primary);
+  border-color: var(--cc-primary);
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--cc-primary-strong);
+  border-color: var(--cc-primary-strong);
+}
+.btn-outline-primary {
+  color: var(--cc-primary);
+  border-color: var(--cc-primary);
+}
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background-color: var(--cc-primary);
+  color: #fff;
+}
+.text-primary {
+  color: var(--cc-primary) !important;
+}
+.badge.bg-primary {
+  background-color: var(--cc-primary) !important;
+}
+
+.hero {
+  position: relative;
+  background: linear-gradient(135deg, var(--cc-primary-soft) 0%, #ffffff 85%);
+  border: 1px solid #ede7ec;
+  overflow: hidden;
+}
+.hero:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 80% 20%, rgba(161, 47, 82, 0.15), transparent 45%);
+}
+.hero-image {
+  position: relative;
+  background-image: url('https://images.unsplash.com/photo-1528744598421-b7b93e12df0b?auto=format&fit=crop&w=1200&q=80');
+  background-size: cover;
+  background-position: center;
+  height: 320px;
+  border: 3px solid #fff;
+  box-shadow: 0 14px 34px rgba(161, 47, 82, 0.18);
+  border-radius: 24px;
+}
+
+.card {
+  border: 1px solid #eef0f4;
+  border-radius: 16px;
+}
+
+.report-body img {max-width:100%;}
+.report-body { line-height: 1.7; font-size: 1.05rem; }
+
+a {
+  color: var(--cc-primary);
+}
+a:hover {
+  color: var(--cc-primary-strong);
+}
+
+.glass-card {
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 16px 40px rgba(31, 31, 43, 0.08);
+  border-radius: 18px;
+  backdrop-filter: blur(6px);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cc-primary-soft);
+  color: var(--cc-primary);
+  font-weight: 700;
+}
+
+.section-heading {
+  letter-spacing: 0.5px;
+}
