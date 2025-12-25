@@ -5,6 +5,7 @@
   <div class="col-lg-8">
     <p class="text-muted small">Posted {{ post.created_at.strftime('%b %d, %Y') }}</p>
     <h1 class="display-6 fw-bold mb-3">{{ post.title }}</h1>
+    <p class="text-muted mb-4">By {{ post.created_by or 'Unknown author' }}</p>
     <div class="lead">{{ post.body }}</div>
     <section class="mt-5">
       <h3 class="h5">Comments</h3>

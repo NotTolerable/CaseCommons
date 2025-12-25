@@ -23,6 +23,7 @@
         <small class="text-muted">{{ post.created_at.strftime('%b %d, %Y') }}</small>
       </div>
       <p class="mb-1 text-muted">{{ post.body[:160] }}...</p>
+      <small class="text-muted">Created by {{ post.created_by or 'Unknown' }}</small>
     </a>
   {% else %}
     <div class="list-group-item">No posts yet.</div>

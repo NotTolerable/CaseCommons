@@ -5,6 +5,7 @@
   <div class="col-lg-8">
     <p class="text-muted small">Published {{ report.created_at.strftime('%b %d, %Y') }}</p>
     <h1 class="display-6 fw-bold mb-4">{{ report.title }}</h1>
+    <p class="text-muted mb-4">By {{ report.created_by or 'Unknown author' }}</p>
     <article class="report-body">{{ report.body_html|safe }}</article>
     <section class="mt-5">
       <h3 class="h5">Comments</h3>

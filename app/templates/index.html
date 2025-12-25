@@ -22,6 +22,9 @@
           <h3 class="h5 mt-2 mb-1">{{ featured.title }}</h3>
           <div class="preview-meta">
             Updated {{ featured.updated_at.strftime('%b %d, %Y') }}
+            {% if featured.created_by %}
+              • Author: {{ featured.created_by }}
+            {% endif %}
           </div>
         </div>
       </div>
@@ -63,7 +66,10 @@
           <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="badge bg-primary bg-opacity-10 text-primary">{{ report.created_at.strftime('%b %d, %Y') }}</span>
           </div>
-          <h3 class="h5 mb-2"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=report.slug) }}">{{ report.title }}</a></h3>
+          <h3 class="h5 mb-1"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=report.slug) }}">{{ report.title }}</a></h3>
+          <div class="preview-meta mb-2">
+            {% if report.created_by %}Author: {{ report.created_by }} • {% endif %}Updated {{ report.updated_at.strftime('%b %d, %Y') }}
+          </div>
           <p class="text-muted mb-0">{{ report.body_html|striptags|truncate(140, True, '...') }}</p>
         </div>
       </div>

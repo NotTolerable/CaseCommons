@@ -9,6 +9,7 @@
   --accent: #14B8A6;
   --focus: #38BDF8;
   --card-radius: 16px;
+  --hero-image: url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80');
 }
 
 body {
@@ -81,14 +82,18 @@ h1, h2, h3, h4, h5 {
   padding: 64px 0;
   background: var(--bg);
   overflow: hidden;
+  background-image: var(--hero-image);
+  background-size: cover;
+  background-position: center;
 }
 .hero::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(90deg, rgba(71, 85, 105, 0.04) 0, rgba(71, 85, 105, 0.04) 1px, transparent 1px, transparent 32px),
-    repeating-linear-gradient(0deg, rgba(71, 85, 105, 0.04) 0, rgba(71, 85, 105, 0.04) 1px, transparent 1px, transparent 32px);
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 32px),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.55) 100%);
   pointer-events: none;
 }
 .hero::after {
