@@ -191,27 +191,6 @@ def create_app(test_config=None):
         check_schema_once()
         check_migrations_once()
 
-    # simple rate limiting by IP per endpoint
-    rate_limits = {}
-
-    def rate_limit(key_func, limit=5, per=60):
-        def decorator(f):
-            @wraps(f)
-            def wrapped(*args, **kwargs):
-                key = key_func()
-                window = datetime.utcnow().replace(second=0, microsecond=0)
-                rates = rate_limits.setdefault(key, {})
-                if window not in rates:
-                    rates.clear()
-                    rates[window] = 0
-                if rates[window] >= limit:
-                    flash("Too many attempts. Please slow down.", "warning")
-                    return redirect(request.referrer or url_for("index"))
-                rates[window] += 1
-                return f(*args, **kwargs)
-            return wrapped
-        return decorator
-
     def admin_required(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -338,24 +317,32 @@ def create_app(test_config=None):
         return render_template("apply.html")
 
     @app.route("/login", methods=["GET", "POST"])
-    @rate_limit(lambda: f"login:{request.remote_addr}", limit=5, per=60)
     def login():
         if request.method == "POST":
             username = (request.form.get("username") or "").strip()
-            password = request.form.get("password")
+            password = request.form.get("password") or ""
+            if not username or not password:
+                flash("Username/email and password are required.", "danger")
+                return redirect(url_for("login"))
+
             user = User.query.filter((User.username == username) | (User.email == username)).first()
             if not user or not verify_password(password, user.password_hash):
-                flash("Invalid credentials", "danger")
+                session["login_attempts"] = session.get("login_attempts", 0) + 1
+                attempts = session["login_attempts"]
+                if attempts >= 3:
+                    flash("Invalid credentials. Please check your login details.", "danger")
+                else:
+                    flash("Invalid credentials", "danger")
                 return redirect(url_for("login"))
+
             if user.status == "banned":
                 flash("Your account is banned.", "danger")
                 return redirect(url_for("login"))
+
+            session.pop("login_attempts", None)
             session.permanent = True
             login_user(user, remember=True, duration=timedelta(days=30))
-            if not user.email_verified:
-                flash("Welcome back. Please verify your email to participate fully.", "warning")
-            else:
-                flash("Welcome back", "success")
+            flash("Welcome back", "success")
             return redirect(url_for("index"))
         return render_template("login.html")
 
