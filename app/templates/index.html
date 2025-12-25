@@ -1,24 +1,37 @@
 {% extends 'base.html' %}
 {% block title %}Home - Case Commons{% endblock %}
 {% block content %}
-<section class="hero mb-5 p-5 rounded-4 shadow-sm glass-card">
-  <div class="row align-items-center gy-4">
-    <div class="col-lg-7 position-relative">
-      <p class="text-uppercase small text-primary fw-semibold mb-2">CaseCommons Community</p>
-      <h1 class="display-5 fw-bold mb-3 section-heading">Sharper analysis. Shared insight.</h1>
-      <p class="lead text-muted">A modern hub for law students to publish case reports, workshop arguments, and grow together with curated visuals and a streamlined workflow.</p>
-      <div class="d-flex flex-wrap gap-3 mt-4">
-        <a href="{{ url_for('discussions') }}" class="btn btn-primary px-4">Join discussions</a>
-        <a href="#reports" class="btn btn-outline-primary px-4">Explore reports</a>
-        <a href="{{ url_for('apply') }}" class="btn btn-outline-secondary px-4">Apply for access</a>
+<section class="hero mb-5 p-5 rounded-4 shadow-sm">
+  <div class="container">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-7 position-relative">
+        <p class="text-uppercase small text-primary fw-semibold mb-2">CaseCommons Community</p>
+        <h1 class="display-5 fw-bold mb-3 section-heading text-white">Sharper analysis. Shared insight.</h1>
+        <p class="lead text-light">A modern hub for law students to publish case reports, workshop arguments, and grow together with curated visuals and a streamlined workflow.</p>
+        <div class="d-flex flex-wrap gap-3 mt-4">
+          <a href="#reports" class="btn btn-primary px-4">Explore reports</a>
+          <a href="{{ url_for('discussions') }}" class="btn btn-outline-primary px-4 bg-white bg-opacity-10 text-white border-0">Join discussions</a>
+          <a href="{{ url_for('apply') }}" class="btn btn-link text-white text-decoration-underline">Apply for access</a>
+        </div>
+        <div class="d-flex gap-4 mt-4 text-light small">
+          <div><strong class="text-primary">Structured briefs</strong><br>Cleaner formatting with inline visuals.</div>
+          <div><strong class="text-primary">Peer rigor</strong><br>Moderated comments and admin reviews.</div>
+        </div>
       </div>
-      <div class="d-flex gap-4 mt-4 text-muted small">
-        <div><strong class="text-primary">Structured briefs</strong><br>Cleaner formatting with inline visuals.</div>
-        <div><strong class="text-primary">Peer rigor</strong><br>Moderated comments and admin reviews.</div>
+      <div class="col-lg-5">
+        <div class="preview-card">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <span class="badge bg-primary bg-opacity-10 text-primary">Sample Report</span>
+              <h3 class="h5 mt-2 mb-1">Law Library Safety Review</h3>
+              <div class="preview-meta">Torts • Updated 2 days ago</div>
+            </div>
+          </div>
+          <p class="text-muted mb-3">Assessing duty of care owed by campus libraries to student patrons, focusing on recent precedent and risk mitigation protocols.</p>
+          <p class="text-muted mb-4">Includes annotated case citations and a recommended remediation checklist tailored to academic environments.</p>
+          <a class="preview-link" href="#reports">View report →</a>
+        </div>
       </div>
-    </div>
-    <div class="col-lg-5">
-      <div class="hero-image"></div>
     </div>
   </div>
 </section>
