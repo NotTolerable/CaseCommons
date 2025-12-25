@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Apply for an Account{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0 rounded-4">
+      <div class="card-body">
+        <h1 class="h4 mb-3">Apply for an account</h1>
+        <p class="text-muted">Tell us about your studies and why you'd like to join.</p>
+        <form method="post" data-single-submit>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Full name</label>
+            <input class="form-control" name="full_name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input class="form-control" name="email" type="email" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Background / motivation</label>
+            <textarea class="form-control" name="statement" rows="6" required></textarea>
+          </div>
+          <button class="btn btn-primary">Submit application</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
