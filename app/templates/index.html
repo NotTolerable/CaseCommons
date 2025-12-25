@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Home - Case Commons{% endblock %}
+{% block content %}
+<section class="hero mb-5 p-5 rounded-4 shadow-sm">
+  <div class="container">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-7 position-relative">
+        <p class="text-uppercase small text-primary fw-semibold mb-2">CaseCommons Community</p>
+        <h1 class="display-5 fw-bold mb-3 section-heading text-white">Sharper analysis. Shared insight.</h1>
+        <p class="lead text-light">A modern hub for law students to publish case reports, workshop arguments, and grow together with curated visuals and a streamlined workflow.</p>
+        <div class="d-flex flex-wrap gap-3 mt-4">
+          <a href="#reports" class="btn btn-primary px-4">Explore reports</a>
+          <a href="{{ url_for('discussions') }}" class="btn btn-outline-primary px-4 bg-white bg-opacity-10 text-white border-0">Join discussions</a>
+          <a href="{{ url_for('apply') }}" class="btn btn-link text-white text-decoration-underline">Apply for access</a>
+        </div>
+        <div class="d-flex gap-4 mt-4 text-light small">
+          <div><strong class="text-primary">Structured briefs</strong><br>Cleaner formatting with inline visuals.</div>
+          <div><strong class="text-primary">Peer rigor</strong><br>Moderated comments and admin reviews.</div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="preview-card">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <span class="badge bg-primary bg-opacity-10 text-primary">Sample Report</span>
+              <h3 class="h5 mt-2 mb-1">Law Library Safety Review</h3>
+              <div class="preview-meta">Torts • Updated 2 days ago</div>
+            </div>
+          </div>
+          <p class="text-muted mb-3">Assessing duty of care owed by campus libraries to student patrons, focusing on recent precedent and risk mitigation protocols.</p>
+          <p class="text-muted mb-4">Includes annotated case citations and a recommended remediation checklist tailored to academic environments.</p>
+          <a class="preview-link" href="#reports">View report →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mb-5" id="reports">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <p class="text-uppercase small text-primary fw-semibold mb-1">Featured</p>
+      <h2 class="h4 fw-semibold">Recent reports</h2>
+    </div>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+      <a href="{{ url_for('admin_index') }}" class="btn btn-sm btn-outline-primary">Admin</a>
+    {% endif %}
+  </div>
+  <div class="row g-4">
+    {% for report in reports %}
+    <div class="col-md-6">
+      <div class="card h-100 shadow-sm border-0 rounded-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge bg-primary bg-opacity-10 text-primary">{{ report.created_at.strftime('%b %d, %Y') }}</span>
+          </div>
+          <h3 class="h5 mb-2"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=report.slug) }}">{{ report.title }}</a></h3>
+          <p class="text-muted mb-0">{{ report.body_html[:140]|striptags }}...</p>
+        </div>
+      </div>
+    </div>
+    {% else %}
+      <p class="text-muted">No reports yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mb-5">
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0 glass-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <p class="text-uppercase small text-primary fw-semibold mb-1">Dialogue</p>
+              <h2 class="h5 fw-semibold mb-0">Latest discussions</h2>
+            </div>
+            <a href="{{ url_for('discussions') }}" class="btn btn-sm btn-outline-primary">All discussions</a>
+          </div>
+          <div class="list-group list-group-flush">
+            {% for d in discussions %}
+              <a class="list-group-item list-group-item-action" href="{{ url_for('discussion_detail', discussion_id=d.id) }}">
+                <div class="d-flex w-100 justify-content-between">
+                  <h5 class="mb-1">{{ d.title }}</h5>
+                  <small class="text-muted">{{ d.created_at.strftime('%b %d, %Y') }}</small>
+                </div>
+                <p class="mb-1 text-muted">{{ d.body[:140] }}...</p>
+              </a>
+            {% else %}
+              <div class="list-group-item">No discussions yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 glass-card h-100">
+        <div class="card-body">
+          <p class="text-uppercase small text-primary fw-semibold mb-1">Why CaseCommons</p>
+          <h2 class="h5 fw-semibold mb-3">Built for law students</h2>
+          <div class="d-flex align-items-start mb-3 gap-3">
+            <div class="feature-icon">A</div>
+            <div>
+              <strong>Author reports with visuals</strong>
+              <p class="mb-0 text-muted small">WYSIWYG editor supports inline images and rich formatting.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-start mb-3 gap-3">
+            <div class="feature-icon">M</div>
+            <div>
+              <strong>Moderated access</strong>
+              <p class="mb-0 text-muted small">Admin approvals keep discussions focused and professional.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <div class="feature-icon">C</div>
+            <div>
+              <strong>Community feedback</strong>
+              <p class="mb-0 text-muted small">Threaded comments help refine arguments and analysis.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
