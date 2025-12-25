@@ -225,9 +225,15 @@ def create_app(test_config=None):
         return wrapper
 
     def sanitize_html(html_text):
-        allowed_tags = bleach.sanitizer.ALLOWED_TAGS + ["p", "h1", "h2", "h3", "h4", "h5", "h6", "img", "blockquote"]
-        allowed_attrs = {"*": ["class", "id", "style"], "a": ["href", "title", "target"], "img": ["src", "alt"]}
-        return bleach.clean(html_text, tags=allowed_tags, attributes=allowed_attrs, strip=True)
+        base_tags = set(bleach.sanitizer.ALLOWED_TAGS)
+        extra_tags = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "img", "blockquote"}
+        allowed_tags = list(base_tags.union(extra_tags))
+        allowed_attrs = {
+            "*": ["class", "id", "style"],
+            "a": ["href", "title", "target"],
+            "img": ["src", "alt"],
+        }
+        return bleach.clean(html_text or "", tags=allowed_tags, attributes=allowed_attrs, strip=True)
 
     def safe_upload_destination(filename: str) -> Path:
         """Ensure uploads remain inside the configured directory."""

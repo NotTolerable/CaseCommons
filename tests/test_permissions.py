@@ -89,3 +89,9 @@ def test_application_submission_and_admin_approval(app, client):
     # new user can log in
     resp = client.post('/login', data={'username': 'newuser', 'password': 'temp'}, follow_redirects=True)
     assert b'Welcome back' in resp.data
+
+
+def test_admin_can_create_report(app, client):
+    login(client, 'admin')
+    resp = client.post('/admin/reports/new', data={'title': 'New Report', 'body': '<p>Body</p>', 'published': 'y'}, follow_redirects=True)
+    assert b'Report created' in resp.data
