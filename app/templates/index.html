@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Home - Case Commons{% endblock %}
+{% block content %}
+<section class="hero mb-5 p-5 rounded-4 shadow-sm">
+  <div class="row align-items-center">
+    <div class="col-lg-7">
+      <p class="text-uppercase small text-primary fw-semibold mb-2">CaseCommons Community</p>
+      <h1 class="display-5 fw-bold mb-3">Sharper analysis. Shared insight.</h1>
+      <p class="lead text-muted">A modern hub for law students to publish case reports, workshop arguments, and grow together.</p>
+      <div class="d-flex gap-3 mt-4">
+        <a href="{{ url_for('discussions') }}" class="btn btn-primary px-4">Join Discussions</a>
+        <a href="#reports" class="btn btn-outline-secondary px-4">View Reports</a>
+      </div>
+    </div>
+    <div class="col-lg-5 text-end d-none d-lg-block">
+      <div class="hero-image rounded-4"></div>
+    </div>
+  </div>
+</section>
+<section id="reports" class="mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4 fw-semibold">Recent Reports</h2>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+      <a href="{{ url_for('admin_index') }}" class="btn btn-sm btn-outline-primary">Admin</a>
+    {% endif %}
+  </div>
+  <div class="row g-4">
+    {% for report in reports %}
+    <div class="col-md-6">
+      <div class="card h-100 shadow-sm border-0 rounded-4">
+        <div class="card-body">
+          <p class="text-muted small mb-1">{{ report.created_at.strftime('%b %d, %Y') }}</p>
+          <h3 class="h5"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=report.slug) }}">{{ report.title }}</a></h3>
+          <p class="text-muted">{{ report.body_html[:120]|striptags }}...</p>
+        </div>
+      </div>
+    </div>
+    {% else %}
+      <p class="text-muted">No reports yet.</p>
+    {% endfor %}
+  </div>
+</section>
+<section class="mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4 fw-semibold">Latest Discussions</h2>
+    <a href="{{ url_for('discussions') }}" class="btn btn-sm btn-outline-secondary">All discussions</a>
+  </div>
+  <div class="list-group shadow-sm">
+    {% for d in discussions %}
+      <a class="list-group-item list-group-item-action" href="{{ url_for('discussion_detail', discussion_id=d.id) }}">
+        <div class="d-flex w-100 justify-content-between">
+          <h5 class="mb-1">{{ d.title }}</h5>
+          <small class="text-muted">{{ d.created_at.strftime('%b %d, %Y') }}</small>
+        </div>
+        <p class="mb-1 text-muted">{{ d.body[:140] }}...</p>
+      </a>
+    {% else %}
+      <div class="list-group-item">No discussions yet.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
