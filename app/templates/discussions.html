@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Discussions{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Community Discussions</h1>
+  {% if current_user.is_authenticated %}
+    {% if current_user.status == 'muted' %}
+      <span class="text-muted small">Muted users cannot start topics.</span>
+    {% elif not current_user.email_verified %}
+      <span class="text-muted small">Verify your email to start a topic.</span>
+    {% else %}
+      <a class="btn btn-primary" href="{{ url_for('new_discussion') }}">New topic</a>
+    {% endif %}
+  {% else %}
+    <a class="btn btn-outline-primary" href="{{ url_for('login') }}">Login to post</a>
+  {% endif %}
+</div>
+<div class="list-group shadow-sm">
+  {% for post in posts %}
+    <a class="list-group-item list-group-item-action" href="{{ url_for('discussion_detail', discussion_id=post.id) }}">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">{{ post.title }}</h5>
+        <small class="text-muted">{{ post.created_at.strftime('%b %d, %Y') }}</small>
+      </div>
+      <p class="mb-1 text-muted">{{ post.body[:160] }}...</p>
+      <small class="text-muted">Created by {{ post.creator.username if post.creator else (post.created_by or 'Unknown') }}</small>
+    </a>
+  {% else %}
+    <div class="list-group-item">No posts yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}
