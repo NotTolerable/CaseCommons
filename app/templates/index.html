@@ -22,7 +22,9 @@
           <h3 class="h5 mt-2 mb-1">{{ featured.title }}</h3>
           <div class="preview-meta">
             Updated {{ featured.updated_at.strftime('%b %d, %Y') }}
-            {% if featured.created_by %}
+            {% if featured.creator %}
+              • Author: {{ featured.creator.username }}
+            {% elif featured.created_by %}
               • Author: {{ featured.created_by }}
             {% endif %}
           </div>
@@ -68,7 +70,7 @@
           </div>
           <h3 class="h5 mb-1"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=report.slug) }}">{{ report.title }}</a></h3>
           <div class="preview-meta mb-2">
-            {% if report.created_by %}Author: {{ report.created_by }} • {% endif %}Updated {{ report.updated_at.strftime('%b %d, %Y') }}
+            {% if report.creator %}Author: {{ report.creator.username }} • {% elif report.created_by %}Author: {{ report.created_by }} • {% endif %}Updated {{ report.updated_at.strftime('%b %d, %Y') }}
           </div>
           <p class="text-muted mb-0">{{ report.body_html|striptags|truncate(140, True, '...') }}</p>
         </div>

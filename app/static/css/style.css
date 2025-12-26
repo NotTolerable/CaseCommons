@@ -18,7 +18,7 @@ body {
   color: var(--text);
 }
 h1, h2, h3, h4, h5 {
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  font-family: 'Playfair Display', 'Times New Roman', serif;
 }
 
 .navbar {
@@ -79,7 +79,7 @@ h1, h2, h3, h4, h5 {
 
 .hero {
   position: relative;
-  padding: 64px 0;
+  padding: 72px 0;
   background: var(--bg);
   overflow: hidden;
   background-image: var(--hero-image);
@@ -91,8 +91,8 @@ h1, h2, h3, h4, h5 {
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 32px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 32px),
     linear-gradient(180deg, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.55) 100%);
   pointer-events: none;
 }
