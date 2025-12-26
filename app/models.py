@@ -28,6 +28,8 @@ class Report(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
     published = db.Column(db.Boolean, default=True)
+    creator = db.relationship('User', foreign_keys=[created_by], lazy="joined")
+    updater = db.relationship('User', foreign_keys=[updated_by], lazy="joined")
 
 
 class ReportImage(db.Model):
@@ -48,6 +50,7 @@ class Discussion(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    creator = db.relationship('User', foreign_keys=[created_by], lazy="joined")
 
 
 class Comment(db.Model):

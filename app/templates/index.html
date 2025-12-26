@@ -15,7 +15,8 @@
       <a href="{{ url_for('apply') }}" class="btn btn-link">Apply for access</a>
     </div>
     {% if featured %}
-    <div class="preview-card mx-auto" style="max-width: 720px;">
+    <div class="d-flex justify-content-center">
+      <div class="preview-card" style="max-width: 720px; width: 100%;">
       <div class="d-flex justify-content-between align-items-start mb-2">
         <div>
           <span class="badge bg-primary">Featured report</span>
@@ -32,6 +33,7 @@
       </div>
       <p class="text-muted mb-3">{{ featured.body_html|striptags|truncate(200, True, '...') }}</p>
       <a class="preview-link" href="{{ url_for('report_detail', slug=featured.slug) }}">View report →</a>
+      </div>
     </div>
     {% else %}
     <div class="preview-card mx-auto text-muted" style="max-width: 720px;">
