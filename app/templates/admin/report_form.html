@@ -49,8 +49,14 @@
       console.error('Quill failed to load; using plain HTML fallback.');
     }
     const form = document.querySelector('form');
+    const bodyInput = document.querySelector('#bodyInput');
+    if (quill && bodyInput) {
+      bodyInput.value = quill.root.innerHTML;
+    } else if (bodyInput) {
+      bodyInput.value = editorEl.innerHTML;
+    }
     form.addEventListener('submit', () => {
-      const bodyInput = document.querySelector('#bodyInput');
+      if (!bodyInput) return;
       if (quill) {
         bodyInput.value = quill.root.innerHTML;
       } else {
