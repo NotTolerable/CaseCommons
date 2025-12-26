@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}Home - Case Commons{% endblock %}
+{% block content %}
+{% set featured = reports[0] if reports|length > 0 else None %}
+{% set remaining_reports = reports[1:] if reports|length > 1 else [] %}
+
+<section class="hero mb-5">
+  <div class="hero-panel text-center">
+    <p class="text-uppercase small fw-semibold mb-3" style="letter-spacing:1px;">CaseCommons Community</p>
+    <h1 class="display-4 fw-bold mb-1 section-heading">Sharper analysis</h1>
+    <h1 class="display-4 fw-bold mb-3" style="color: var(--accent);">Shared insight.</h1>
+    <p class="lead mb-4">Delivering thoughtful case reports and discussions built by and for law students.</p>
+    <div class="d-flex flex-wrap justify-content-center gap-3 mb-5">
+      <a href="#reports" class="btn btn-cta">Explore reports</a>
+      <a href="{{ url_for('discussions') }}" class="btn btn-outline-primary">Join discussions</a>
+      <a href="{{ url_for('apply') }}" class="btn btn-link text-light">Apply for access</a>
+    </div>
+  </div>
+</section>
+
+<section class="mb-5" id="reports">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <p class="text-uppercase small text-primary fw-semibold mb-1">Reports</p>
+      <h2 class="h4 fw-semibold">Recent reports</h2>
+    </div>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+      <a href="{{ url_for('admin_index') }}" class="btn btn-sm btn-outline-primary">Admin</a>
+    {% endif %}
+  </div>
+  {% if featured %}
+    <div class="card h-100 shadow-sm border-0 rounded-4 mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge bg-primary">Featured</span>
+          <span class="text-muted small">{{ featured.created_at.strftime('%b %d, %Y') }}</span>
+        </div>
+        <h3 class="h5 mb-1"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=featured.slug) }}">{{ featured.title }}</a></h3>
+        <div class="preview-meta mb-2">
+          {% if featured.creator %}Author: {{ featured.creator.username }} • {% elif featured.created_by %}Author: {{ featured.created_by }} • {% endif %}Updated {{ featured.updated_at.strftime('%b %d, %Y') }}
+        </div>
+        {% if featured.tags %}
+          <div class="mb-2">
+            {% for tag in featured.tags %}
+              <span class="badge bg-primary bg-opacity-10 text-primary me-1">{{ tag.name }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <p class="text-muted mb-0">{{ featured.body_html|striptags|truncate(180, True, '...') }}</p>
+      </div>
+    </div>
+  {% endif %}
+  {% if remaining_reports %}
+  <div class="row g-4">
+    {% for report in remaining_reports %}
+    <div class="col-md-6">
+      <div class="card h-100 shadow-sm border-0 rounded-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge bg-primary bg-opacity-10 text-primary">{{ report.created_at.strftime('%b %d, %Y') }}</span>
+          </div>
+          <h3 class="h5 mb-1"><a class="text-decoration-none" href="{{ url_for('report_detail', slug=report.slug) }}">{{ report.title }}</a></h3>
+          <div class="preview-meta mb-2">
+            {% if report.creator %}Author: {{ report.creator.username }} • {% elif report.created_by %}Author: {{ report.created_by }} • {% endif %}Updated {{ report.updated_at.strftime('%b %d, %Y') }}
+          </div>
+          <p class="text-muted mb-0">{{ report.body_html|striptags|truncate(140, True, '...') }}</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body text-center text-muted">
+        <p class="mb-3">No recent reports yet.</p>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+          <a class="btn btn-primary" href="{{ url_for('admin_report_new') }}">Create a report</a>
+        {% else %}
+          <a class="btn btn-outline-primary" href="{{ url_for('apply') }}">Apply to contribute</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+<section class="mb-5">
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0 glass-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <p class="text-uppercase small text-primary fw-semibold mb-1">Dialogue</p>
+              <h2 class="h5 fw-semibold mb-0">Latest discussions</h2>
+            </div>
+            <a href="{{ url_for('discussions') }}" class="btn btn-sm btn-outline-primary">All discussions</a>
+          </div>
+          <div class="list-group list-group-flush">
+            {% for d in discussions %}
+              <a class="list-group-item list-group-item-action" href="{{ url_for('discussion_detail', discussion_id=d.id) }}">
+                <div class="d-flex w-100 justify-content-between">
+                  <h5 class="mb-1">{{ d.title }}</h5>
+                  <small class="text-muted">{{ d.created_at.strftime('%b %d, %Y') }}</small>
+                </div>
+                <p class="mb-1 text-muted">{{ d.body[:140] }}...</p>
+              </a>
+            {% else %}
+              <div class="list-group-item">No discussions yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 glass-card h-100">
+        <div class="card-body">
+          <p class="text-uppercase small text-primary fw-semibold mb-1">Why CaseCommons</p>
+          <h2 class="h5 fw-semibold mb-3">Built for law students</h2>
+          <div class="d-flex align-items-start mb-3 gap-3">
+            <div class="feature-icon">A</div>
+            <div>
+              <strong>Author reports with visuals</strong>
+              <p class="mb-0 text-muted small">WYSIWYG editor supports inline images and rich formatting.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-start mb-3 gap-3">
+            <div class="feature-icon">M</div>
+            <div>
+              <strong>Moderated access</strong>
+              <p class="mb-0 text-muted small">Admin approvals keep discussions focused and professional.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <div class="feature-icon">C</div>
+            <div>
+              <strong>Community feedback</strong>
+              <p class="mb-0 text-muted small">Threaded comments help refine arguments and analysis.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
