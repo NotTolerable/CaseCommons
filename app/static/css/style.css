@@ -7,9 +7,11 @@
   --primary: #023E8A;
   --primaryHover: #0077B6;
   --accent: #90E0EF;
+  --cta: #e6a99a;
+  --ctaHover: #d98f80;
   --focus: #38BDF8;
   --card-radius: 16px;
-  --hero-image: url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80');
+  --hero-image: url('https://cdn.prod.website-files.com/63c72a2b63c3de103965dd8f/6407d1fd316ad963ec893dc1_Marler-Law-Firm-2.jpg');
 }
 
 body {
@@ -69,6 +71,19 @@ h1, h2, h3, h4, h5 {
   color: var(--primaryHover);
   text-decoration: underline;
 }
+.btn-cta {
+  background: var(--cta);
+  border-color: var(--cta);
+  color: #0d1b2a;
+  font-weight: 700;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+.btn-cta:hover,
+.btn-cta:focus {
+  background: var(--ctaHover);
+  border-color: var(--ctaHover);
+  color: #0d1b2a;
+}
 
 .text-primary {
   color: var(--primary) !important;
@@ -109,7 +124,7 @@ h1, h2, h3, h4, h5 {
 .hero .hero-panel {
   position: relative;
   z-index: 1;
-  max-width: 960px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: 0 16px;
   color: #eaf5ff;
@@ -120,6 +135,9 @@ h1, h2, h3, h4, h5 {
 .hero .hero-panel a {
   color: #eaf5ff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.hero .hero-panel .lead {
+  color: #dbe8f5;
 }
 .hero .hero-panel .btn-outline-primary {
   color: #eaf5ff;
