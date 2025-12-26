@@ -1,15 +1,15 @@
 :root {
-  --bg: #F5F7FB;
-  --surface: #FFFFFF;
-  --text: #0f1b2d;
+  --bg: #f7fbff;
+  --surface: #ffffff;
+  --text: #0d1b2a;
   --muted: #4b5568;
-  --border: #d9e1ec;
-  --primary: #18314f;
-  --primaryHover: #12263f;
-  --accent: #1fb1c9;
+  --border: #d4deea;
+  --primary: #023E8A;
+  --primaryHover: #0077B6;
+  --accent: #90E0EF;
   --focus: #38BDF8;
   --card-radius: 16px;
-  --hero-image: url('https://cdn.prod.website-files.com/63c72a2b63c3de103965dd8f/6407d1fd316ad963ec893dc1_Marler-Law-Firm-2.jpg');
+  --hero-image: url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80');
 }
 
 body {
@@ -79,7 +79,7 @@ h1, h2, h3, h4, h5 {
 
 .hero {
   position: relative;
-  padding: 72px 0;
+  padding: 88px 0;
   background: var(--bg);
   overflow: hidden;
   background-image: var(--hero-image);
@@ -91,9 +91,9 @@ h1, h2, h3, h4, h5 {
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 32px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 32px),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.55) 100%);
+    repeating-linear-gradient(90deg, rgba(202, 240, 248, 0.08) 0, rgba(202, 240, 248, 0.08) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(0deg, rgba(202, 240, 248, 0.08) 0, rgba(202, 240, 248, 0.08) 1px, transparent 1px, transparent 32px),
+    linear-gradient(180deg, rgba(2, 62, 138, 0.65) 0%, rgba(0, 119, 182, 0.55) 100%);
   pointer-events: none;
 }
 .hero::after {
@@ -109,13 +109,26 @@ h1, h2, h3, h4, h5 {
 .hero .hero-panel {
   position: relative;
   z-index: 1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
-  padding: 48px;
   max-width: 960px;
   margin: 0 auto;
+  padding: 0 16px;
+  color: #eaf5ff;
+  text-align: center;
+}
+.hero .hero-panel h1,
+.hero .hero-panel p,
+.hero .hero-panel a {
+  color: #eaf5ff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.hero .hero-panel .btn-outline-primary {
+  color: #eaf5ff;
+  border-color: rgba(234, 245, 255, 0.6);
+}
+.hero .hero-panel .btn-outline-primary:hover,
+.hero .hero-panel .btn-outline-primary:focus {
+  background: rgba(234, 245, 255, 0.15);
+  color: #ffffff;
 }
 
 .card {
@@ -158,9 +171,9 @@ a:hover {
 }
 
 .preview-card {
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--border);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 16, 32, 0.25);
   border-radius: var(--card-radius);
   padding: 20px;
 }
