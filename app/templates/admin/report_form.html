@@ -42,10 +42,20 @@
       console.error('Quill failed to load; ensure CDN availability.');
       return;
     }
-    const quill = new Quill('#editor', {theme: 'snow', modules: {toolbar: [['bold','italic'], [{'header':[1,2,false]}], [{'list':'ordered'},{'list':'bullet'}], ['blockquote','link','image']]}});
+    let quill;
+    if (typeof Quill !== 'undefined') {
+      quill = new Quill('#editor', {theme: 'snow', modules: {toolbar: [['bold','italic'], [{'header':[1,2,false]}], [{'list':'ordered'},{'list':'bullet'}], ['blockquote','link','image']]}});
+    } else {
+      console.error('Quill failed to load; using plain HTML fallback.');
+    }
     const form = document.querySelector('form');
     form.addEventListener('submit', () => {
-      document.querySelector('#bodyInput').value = quill.root.innerHTML;
+      const bodyInput = document.querySelector('#bodyInput');
+      if (quill) {
+        bodyInput.value = quill.root.innerHTML;
+      } else {
+        bodyInput.value = editorEl.innerHTML;
+      }
     });
   });
 </script>
