@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Admin Discussion{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0 rounded-4">
+      <div class="card-body">
+        <h1 class="h5 mb-4">{{ 'Edit' if discussion else 'New' }} Discussion</h1>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input class="form-control" name="title" value="{{ discussion.title if discussion else '' }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Body</label>
+            <textarea class="form-control" name="body" rows="6" required>{{ discussion.body if discussion else '' }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tags (comma separated)</label>
+            <input class="form-control" name="tags" value="{% if discussion %}{{ discussion.tags | map(attribute='name') | join(', ') }}{% endif %}">
+          </div>
+          <button class="btn btn-primary">Save</button>
+          <a class="btn btn-outline-secondary" href="{{ url_for('admin_index') }}">Cancel</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
