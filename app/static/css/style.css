@@ -1,12 +1,12 @@
 :root {
-  --bg: #F8FAFC;
+  --bg: #F5F7FB;
   --surface: #FFFFFF;
-  --text: #0F172A;
-  --muted: #475569;
-  --border: #E2E8F0;
-  --primary: #0B3B5A;
-  --primaryHover: #072A40;
-  --accent: #14B8A6;
+  --text: #0f1b2d;
+  --muted: #4b5568;
+  --border: #d9e1ec;
+  --primary: #18314f;
+  --primaryHover: #12263f;
+  --accent: #1fb1c9;
   --focus: #38BDF8;
   --card-radius: 16px;
   --hero-image: url('https://cdn.prod.website-files.com/63c72a2b63c3de103965dd8f/6407d1fd316ad963ec893dc1_Marler-Law-Firm-2.jpg');

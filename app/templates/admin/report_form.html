@@ -17,6 +17,10 @@
             <div id="editor" class="mb-2">{% if report %}{{ report.body_html|safe }}{% endif %}</div>
             <textarea class="d-none" name="body" id="bodyInput"></textarea>
           </div>
+          <div class="mb-3">
+            <label class="form-label">Tags (comma separated)</label>
+            <input class="form-control" name="tags" value="{% if report %}{{ report.tags | map(attribute='name') | join(', ') }}{% endif %}">
+          </div>
           <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="published" id="published" {% if report and report.published %}checked{% endif %}>
             <label class="form-check-label" for="published">Published</label>

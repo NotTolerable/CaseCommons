@@ -24,6 +24,13 @@
       </div>
       <p class="mb-1 text-muted">{{ post.body[:160] }}...</p>
       <small class="text-muted">Created by {{ post.creator.username if post.creator else (post.created_by or 'Unknown') }}</small>
+      {% if post.tags %}
+        <div class="mt-2">
+          {% for tag in post.tags %}
+            <span class="badge bg-primary bg-opacity-10 text-primary me-1">{{ tag.name }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
     </a>
   {% else %}
     <div class="list-group-item">No posts yet.</div>

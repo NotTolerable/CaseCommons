@@ -7,7 +7,14 @@
       Published {{ report.created_at.strftime('%b %d, %Y') }}
       {% if report.creator %} • By {{ report.creator.username }}{% elif report.created_by %} • By {{ report.created_by }}{% endif %}
     </p>
-    <h1 class="display-6 fw-bold mb-4">{{ report.title }}</h1>
+    <h1 class="display-6 fw-bold mb-3">{{ report.title }}</h1>
+    {% if report.tags %}
+      <div class="mb-4">
+        {% for tag in report.tags %}
+          <span class="badge bg-primary bg-opacity-10 text-primary me-1">{{ tag.name }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
     <article class="report-body">{{ report.body_html|safe }}</article>
     <section class="mt-5">
       <h3 class="h5">Comments</h3>

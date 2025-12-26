@@ -148,7 +148,7 @@ def create_app(test_config=None):
         flash("Form expired or invalid. Please try again.", "danger")
         return redirect(request.referrer or url_for("index")), 400
 
-    from .models import User, Report, Discussion, Comment, ModerationLog, ReportImage, AccountApplication
+    from .models import User, Report, Discussion, Comment, ModerationLog, ReportImage, AccountApplication, Tag
     from .security import hash_password, verify_password
 
     @login_manager.user_loader
@@ -234,6 +234,19 @@ def create_app(test_config=None):
             "img": ["src", "alt"],
         }
         return bleach.clean(html_text or "", tags=allowed_tags, attributes=allowed_attrs, strip=True)
+
+    def sync_tags_from_csv(csv_value):
+        names = [n.strip() for n in (csv_value or "").split(",") if n.strip()]
+        tags = []
+        for name in names:
+            existing = Tag.query.filter(Tag.name.ilike(name)).first()
+            if existing:
+                tags.append(existing)
+            else:
+                new_tag = Tag(name=name)
+                db.session.add(new_tag)
+                tags.append(new_tag)
+        return tags
 
     def safe_upload_destination(filename: str) -> Path:
         """Ensure uploads remain inside the configured directory."""
@@ -416,10 +429,12 @@ def create_app(test_config=None):
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             body = request.form.get("body", "").strip()
+            tags_csv = request.form.get("tags", "")
             if not title or not body:
                 flash("Title and body required", "warning")
                 return redirect(url_for("new_discussion"))
             post = Discussion(title=title, body=body, created_by=current_user.id, created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            post.tags = sync_tags_from_csv(tags_csv)
             db.session.add(post)
             db.session.commit()
             flash("Discussion created", "success")
@@ -545,11 +560,13 @@ def create_app(test_config=None):
             title = request.form.get("title", "").strip()
             body = sanitize_html(request.form.get("body", ""))
             published = bool(request.form.get("published"))
+            tags_csv = request.form.get("tags", "")
             if not title:
                 flash("Title is required", "warning")
                 return redirect(url_for("admin_report_new"))
             slug = "-".join(title.lower().split()) + str(uuid.uuid4())[:6]
             report = Report(title=title, slug=slug, body_html=body, created_by=current_user.id, updated_by=current_user.id, created_at=datetime.utcnow(), updated_at=datetime.utcnow(), published=published)
+            report.tags = sync_tags_from_csv(tags_csv)
             db.session.add(report)
             db.session.commit()
             log_moderation("create_report", "report", report.id, request.form.get("reason"))
@@ -566,6 +583,7 @@ def create_app(test_config=None):
             title = request.form.get("title", "").strip()
             body = sanitize_html(request.form.get("body", ""))
             published = bool(request.form.get("published"))
+            tags_csv = request.form.get("tags", "")
             if not title:
                 flash("Title is required", "warning")
                 return redirect(url_for("admin_report_edit", report_id=report.id))
@@ -574,6 +592,7 @@ def create_app(test_config=None):
             report.published = published
             report.updated_at = datetime.utcnow()
             report.updated_by = current_user.id
+            report.tags = sync_tags_from_csv(tags_csv)
             db.session.commit()
             log_moderation("update_report", "report", report.id, request.form.get("reason"))
             flash("Report updated", "success")
@@ -598,10 +617,12 @@ def create_app(test_config=None):
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             body = request.form.get("body", "").strip()
+            tags_csv = request.form.get("tags", "")
             if not title or not body:
                 flash("Title and body are required", "warning")
                 return redirect(url_for("admin_discussion_new"))
             post = Discussion(title=title, body=body, created_by=current_user.id, created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            post.tags = sync_tags_from_csv(tags_csv)
             db.session.add(post)
             db.session.commit()
             log_moderation("create_discussion", "discussion", post.id, request.form.get("reason"))
@@ -617,12 +638,14 @@ def create_app(test_config=None):
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             body = request.form.get("body", "").strip()
+            tags_csv = request.form.get("tags", "")
             if not title or not body:
                 flash("Title and body are required", "warning")
                 return redirect(url_for("admin_discussion_edit", discussion_id=discussion.id))
             discussion.title = title
             discussion.body = body
             discussion.updated_at = datetime.utcnow()
+            discussion.tags = sync_tags_from_csv(tags_csv)
             db.session.commit()
             log_moderation("update_discussion", "discussion", discussion.id, request.form.get("reason"))
             flash("Discussion updated", "success")
